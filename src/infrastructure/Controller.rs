@@ -1,4 +1,5 @@
 use axum::{
+    extract::Path,
     routing::{get, post},
     http::StatusCode,
     Json, Router,
@@ -6,32 +7,17 @@ use axum::{
 
 use serde::{Deserialize, Serialize};
 
+use crate::domain::Auth;
+
 pub fn route(router: Router) -> Router {
-    return router.route("/", get(root))
-        .route("/users", post(create_user));
+    return router
+        .route("/:service/status", get(status))
 }
 
-async fn root() -> &'static str {
-    "Hello, World!"
-}
-
-async fn create_user(Json(payload): Json<CreateUser>) -> (StatusCode, Json<User>) {
-    let user = User {
-        id: 8080,
-        username: payload.username,
-    };
-
-    (StatusCode::CREATED, Json(user))
-}
-
-#[derive(Deserialize)]
-struct CreateUser {
-    username: String,
-}
-
-// the output to our `create_user` handler
-#[derive(Serialize)]
-struct User {
-    id: u64,
-    username: String,
+async fn status(Path(service): Path<String>) -> (StatusCode, String) {
+    let o_service = Auth::find_service(service.as_str());
+    if o_service.is_some() {
+        return (StatusCode::OK, o_service.unwrap().code() + " => " + &o_service.unwrap().uri());
+    }
+    return (StatusCode::NOT_FOUND, "Not found".to_string());
 }
