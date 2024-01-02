@@ -33,3 +33,8 @@ pub(crate) fn insert_service(code: String, uri: String, end_point_status: String
     INSTANCE.lock().unwrap().services.insert(code.clone(), new_service.clone());
     return new_service;
 }
+
+pub(crate) fn update_service(service: Service::Service) -> Service::Service {
+    INSTANCE.lock().unwrap().services.insert(service.code(), service);
+    return service;
+}

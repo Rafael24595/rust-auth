@@ -1,6 +1,7 @@
 mod infrastructure {
     pub mod controller;
     pub mod Service;
+    pub mod DtoKey;
 }
 
 mod commons {

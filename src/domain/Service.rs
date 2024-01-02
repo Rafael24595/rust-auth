@@ -37,4 +37,16 @@ impl Service {
         return self.end_point_key.to_string();
     }
 
+    pub fn key(&self) -> Option<Key> {
+        return self.key;
+    }
+
+    pub fn has_key(&self) -> bool {
+        return self.key.is_some();
+    }
+
+    pub fn update_key(&mut self, key: Key) {
+        self.key = Some(key);
+    }
+
 }
