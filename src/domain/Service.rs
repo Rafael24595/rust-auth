@@ -4,15 +4,17 @@ use crate::domain::Key::Key;
 pub struct Service {
     code: &'static str,
     uri: &'static str,
+    end_point_status: &'static str,
+    end_point_key: &'static str,
     key: Option<Key>
 }
 
-pub(crate) fn new(code: String, uri: String) -> Service {
-    let static_code: &'static str = Box::leak(code.into_boxed_str());
-    let static_uri: &'static str = Box::leak(uri.into_boxed_str());
+pub(crate) fn new(code: String, uri: String, end_point_status: String, end_point_key: String) -> Service {
     Service {
-        code: static_code,
-        uri: static_uri,
+        code: Box::leak(code.into_boxed_str()),
+        uri: Box::leak(uri.into_boxed_str()),
+        end_point_status: Box::leak(end_point_status.into_boxed_str()),
+        end_point_key: Box::leak(end_point_key.into_boxed_str()),
         key: None
     }
 }
@@ -25,6 +27,14 @@ impl Service {
 
     pub fn uri(&self) -> String {
         return self.uri.to_string();
+    }
+
+    pub fn end_point_status(&self) -> String {
+        return self.end_point_status.to_string();
+    }
+
+    pub fn end_point_key(&self) -> String {
+        return self.end_point_key.to_string();
     }
 
 }

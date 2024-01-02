@@ -28,8 +28,8 @@ pub(crate) fn find_service(code: &str) -> Option<Service::Service> {
     return None;
 }
 
-pub(crate) fn insert_service(code: String, uri: String) -> Service::Service {
-    let new_service = Service::new(code.clone(), uri);
+pub(crate) fn insert_service(code: String, uri: String, end_point_status: String, end_point_key: String) -> Service::Service {
+    let new_service = Service::new(code.clone(), uri, end_point_status, end_point_key);
     INSTANCE.lock().unwrap().services.insert(code.clone(), new_service.clone());
     return new_service;
 }
