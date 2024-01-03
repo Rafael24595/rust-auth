@@ -2,11 +2,13 @@ mod infrastructure {
     pub mod controller;
     pub mod Service;
     pub mod DtoKey;
+    pub mod DtoService;
 }
 
 mod commons {
     pub mod configuration {
         pub mod Configurator;
+        pub mod Configuration;
     }
 }
 
@@ -14,6 +16,7 @@ mod domain {
     pub mod Auth;
     pub mod Service;
     pub mod Key;
+    pub mod PassToken;
 }
 
 use axum::Router;

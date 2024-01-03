@@ -2,15 +2,15 @@ use std::collections::HashMap;
 
 use crate::domain::Service;
 
-struct Auth {
-    services: HashMap<String, Service::Service>
-}
-
 use lazy_static::lazy_static;
 use std::sync::Mutex;
 
 lazy_static! {
     static ref INSTANCE: Mutex<Auth> = Mutex::new(new());
+}
+
+struct Auth {
+    services: HashMap<String, Service::Service>
 }
 
 fn new() -> Auth {
