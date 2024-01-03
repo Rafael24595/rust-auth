@@ -10,6 +10,7 @@ mod commons {
         pub mod Configurator;
         pub mod Configuration;
     }
+    pub mod LocalCrypto;
 }
 
 mod domain {
