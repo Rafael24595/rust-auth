@@ -1,6 +1,7 @@
 use dotenv::dotenv;
 use uuid::Uuid;
 
+use crate::commons::crypto::CryptoConfiguration;
 use crate::domain::Auth;
 
 use crate::commons::configuration::Configuration;
@@ -15,8 +16,11 @@ pub(crate) fn initialize() {
 }
 
 fn initialize_configuration() -> Configuration::Configuration {
-    let pubkey_name = std::env::var("PUBKEY_NAME");
-    let prikey_name = std::env::var("PRIKEY_NAME");
+    let pubkey_name = std::env::var("KEY_PUBKEY_NAME");
+    let prikey_name = std::env::var("KEY_PRIKEY_NAME");
+    let module = std::env::var("KEY_TYPE");
+    let format = std::env::var("KEY_FORMAT");
+    let pass_phrase = std::env::var("KEY_PASSPHRASE");
 
     if pubkey_name.is_err() || prikey_name.is_err() {
         //TODO: Exception.
@@ -24,7 +28,15 @@ fn initialize_configuration() -> Configuration::Configuration {
 
     //TODO: Valide keys.
 
-    let mut conf = Configuration::new(pubkey_name.unwrap(), prikey_name.unwrap());
+    let crypto = CryptoConfiguration::new(
+        pubkey_name.unwrap(),
+        prikey_name.unwrap(),
+        module.unwrap(),
+        format.unwrap(),
+        pass_phrase.unwrap_or_default()
+    );
+
+    let mut conf = Configuration::new(crypto);
     let uuid = Uuid::new_v4().to_string();
     let token = PassToken::new(uuid);
     conf.push_token(token);

@@ -1,36 +1,23 @@
-use std::fs::File;
-use std::io::Read;
+use base64::{Engine as _, engine::general_purpose};
 
 use crate::domain::{Auth,Key};
 use crate::infrastructure::{DtoKey, DtoService};
 use crate::commons::configuration::Configuration;
 
-pub(crate) async fn nodekey() -> Result<String, (u16, String)> {
-    let config = Configuration::instance();
-    let file_path = String::from("./assets/keys/") + &config.pubkey_name;
-    let file = File::open(file_path);
-
-    if file.is_err() {
-        return Err((reqwest::StatusCode::INTERNAL_SERVER_ERROR.as_u16(), file.err().unwrap().to_string()));
-    }
-
-    let mut contents = String::new();
-    let result = file.unwrap().read_to_string(&mut contents);
-
-    if result.is_err() {
-        return Err((reqwest::StatusCode::INTERNAL_SERVER_ERROR.as_u16(), result.err().unwrap().to_string()));
-    }
-
-    return Ok(contents);
+pub(crate) async fn nodekey() -> Result<String, String> {
+    let crypto = Configuration::instance().crypto;
+    return crypto.read_public();
 }
 
-pub(crate) async fn subscribe(service: String, host: String, dto: DtoService::DtoService) -> Result<(), (u16, String)> {
+pub(crate) async fn subscribe(service: String, host: String, dto: DtoService::DtoService) -> Result<String, String> {
     let o_service = Auth::find_service(service.as_str());
     if o_service.is_some() {
-        return Err((reqwest::StatusCode::FORBIDDEN.as_u16(), String::from("Service already registered.")));
+        //return Err((reqwest::StatusCode::FORBIDDEN.as_u16(), String::from("Service already registered.")));
     }
 
-    return Ok(());
+    let crypto = Configuration::instance().crypto;
+    let encrypted_message = general_purpose::STANDARD.decode(dto.pass_key).unwrap();
+    return crypto.decrypt_message(&encrypted_message);
 }
 
 pub(crate) async fn status(service: String) -> Result<(), (u16, String)> {

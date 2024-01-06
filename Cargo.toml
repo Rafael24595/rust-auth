@@ -14,5 +14,6 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 lazy_static = "1.4.0"
 reqwest = { version = "0.11", features = ["blocking", "json"] }
 uuid = { version = "1.6.1", features = ["v4", "fast-rng"] }
-openssl = "0.10.36"
+rsa = "0.9.6"
+base64 = "0.21.5"
 dotenv = "0.15.0"
