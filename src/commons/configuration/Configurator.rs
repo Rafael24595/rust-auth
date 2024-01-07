@@ -2,7 +2,7 @@ use dotenv::dotenv;
 use uuid::Uuid;
 
 use crate::commons::crypto::CryptoConfiguration;
-use crate::domain::Auth;
+use crate::domain::Services;
 
 use crate::commons::configuration::Configuration;
 
@@ -36,14 +36,17 @@ fn initialize_configuration() -> Configuration::Configuration {
         pass_phrase.unwrap_or_default()
     );
 
-    let mut conf = Configuration::new(crypto);
-    let uuid = Uuid::new_v4().to_string();
-    let token = PassToken::new(uuid);
-    conf.push_token(token);
-
+    let conf = Configuration::new(crypto);
+    
     Configuration::initialize(conf.clone());
+    
+    let uuid = Uuid::new_v4().to_string();
+    let token = PassToken::new(uuid.clone());
+    Configuration::push_token(token);
 
-    return conf;
+    println!("{}", uuid);
+
+    return Configuration::instance();
 }
 
 pub(crate) fn initialize_services() {
@@ -53,7 +56,7 @@ pub(crate) fn initialize_services() {
         let end_point_status = std::env::var(service.to_uppercase() + "_STATUS");
         let end_point_key = std::env::var(service.to_uppercase() + "_KEY");
         if uri.is_ok() && end_point_status.is_ok() && end_point_key.is_ok() {
-            Auth::insert_service(service, uri.unwrap(), end_point_status.unwrap(), end_point_key.unwrap());
+            Services::insert(service, uri.unwrap(), end_point_status.unwrap(), end_point_key.unwrap());
         } else {
             //TODO: Log.
         }

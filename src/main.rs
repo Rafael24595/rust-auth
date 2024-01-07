@@ -20,7 +20,7 @@ mod commons {
 }
 
 mod domain {
-    pub mod Auth;
+    pub mod Services;
     pub mod Service;
     pub mod Key;
     pub mod PassToken;

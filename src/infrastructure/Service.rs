@@ -1,6 +1,7 @@
 use base64::{Engine as _, engine::general_purpose};
 
-use crate::domain::{Auth,Key};
+use crate::domain::Service;
+use crate::domain::{Services,Key};
 use crate::infrastructure::{DtoKey, DtoService};
 use crate::commons::configuration::Configuration;
 
@@ -9,19 +10,39 @@ pub(crate) async fn nodekey() -> Result<String, String> {
     return crypto.read_public();
 }
 
-pub(crate) async fn subscribe(service: String, host: String, dto: DtoService::DtoService) -> Result<String, String> {
-    let o_service = Auth::find_service(service.as_str());
+pub(crate) async fn subscribe(code: String, host: String, dto: DtoService::DtoService) -> Result<(), String> {
+    let o_service = Services::find(&code.as_str());
     if o_service.is_some() {
-        //return Err((reqwest::StatusCode::FORBIDDEN.as_u16(), String::from("Service already registered.")));
+        return Err(String::from("Service already registered."));
+    }
+
+    let validation = valide_message(dto.clone());
+    if validation.is_err() {
+        return Err(validation.err().unwrap());
     }
 
     let crypto = Configuration::instance().crypto;
     let encrypted_message = general_purpose::STANDARD.decode(dto.pass_key).unwrap();
-    return crypto.decrypt_message(&encrypted_message);
+    let r_uuid = crypto.decrypt_message(&encrypted_message);
+    if r_uuid.is_err() {
+        return Err(r_uuid.err().unwrap());
+    }
+
+    let uuid = r_uuid.unwrap();
+
+    let is_authorized = Configuration::find_active_token(uuid);
+    if let Err(status) = is_authorized {
+        return Err(String::from("Token is not authorized. Status: ") + status.to_string());
+    }
+
+    let service = Service::new(code, host, dto.end_point_status, dto.end_point_key);
+    Services::insert_service(service);
+
+    return Ok(());
 }
 
 pub(crate) async fn status(service: String) -> Result<(), (u16, String)> {
-    let o_service = Auth::find_service(service.as_str());
+    let o_service = Services::find(service.as_str());
     if o_service.is_some() {
         let service_data = o_service.unwrap();
         let url = service_data.uri() + &service_data.end_point_status();
@@ -46,7 +67,7 @@ pub(crate) async fn status(service: String) -> Result<(), (u16, String)> {
 }
 
 pub(crate) async fn key(service: String) -> Result<(String), (u16, String)> {
-    let o_service = Auth::find_service(service.as_str());
+    let o_service = Services::find(service.as_str());
     if o_service.is_some() {
 
         let mut service_data = o_service.unwrap();
@@ -75,7 +96,7 @@ pub(crate) async fn key(service: String) -> Result<(String), (u16, String)> {
             let dto_key = r_dto_key.unwrap();
             let key = Key::new(dto_key.public, dto_key.expires);
             service_data.update_key(key);
-            Auth::update_service(service_data);
+            Services::update(service_data);
             return Ok(key.key());
         }
 
@@ -83,4 +104,12 @@ pub(crate) async fn key(service: String) -> Result<(String), (u16, String)> {
     }
 
     return Err((reqwest::StatusCode::BAD_REQUEST.as_u16(), "Service not defined".to_string()));
+}
+
+fn valide_message(dto: DtoService::DtoService) -> Result<(), String> {
+    if let Ok(uuid) = Configuration::includes_active_token(dto.pass_key.clone()) {
+        Configuration::deprecate_token(uuid);
+        return Err(String::from("Key exposed. Key has been deprecated."));
+    }
+    return Ok(());
 }
