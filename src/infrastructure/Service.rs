@@ -108,7 +108,9 @@ pub(crate) async fn key(service: String) -> Result<(String), (u16, String)> {
 
 fn valide_message(dto: DtoService::DtoService) -> Result<(), String> {
     if let Ok(uuid) = Configuration::includes_active_token(dto.pass_key.clone()) {
-        Configuration::deprecate_token(uuid);
+        if let Some(token) = Configuration::deprecate_token(uuid) {
+            println!("New token created: {}", token.uuid());
+        }
         return Err(String::from("Key exposed. Key has been deprecated."));
     }
     return Ok(());

@@ -1,12 +1,9 @@
 use dotenv::dotenv;
-use uuid::Uuid;
 
 use crate::commons::crypto::CryptoConfiguration;
 use crate::domain::Services;
 
-use crate::commons::configuration::Configuration;
-
-use crate::domain::PassToken;
+use crate::commons::configuration::Configuration::{self, create_service_token};
 
 pub(crate) fn initialize() {
     dotenv().ok();
@@ -39,12 +36,10 @@ fn initialize_configuration() -> Configuration::Configuration {
     let conf = Configuration::new(crypto);
     
     Configuration::initialize(conf.clone());
-    
-    let uuid = Uuid::new_v4().to_string();
-    let token = PassToken::new(uuid.clone());
-    Configuration::push_token(token);
 
-    println!("{}", uuid);
+    let token = create_service_token();
+
+    println!("Service token created: {}", token.uuid());
 
     return Configuration::instance();
 }
