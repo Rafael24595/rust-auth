@@ -1,8 +1,10 @@
 mod infrastructure {
     pub mod Controller;
     pub mod Service;
-    pub mod DtoKey;
+    pub mod DtoPubKeyRequest;
     pub mod DtoService;
+    pub mod DtoPubKeyResponse;
+    mod controller;
 }
 
 mod commons {
@@ -16,6 +18,9 @@ mod commons {
             pub mod CryptoManager;
             pub mod Rsa;
         }
+    }
+    pub mod exception {
+        pub mod AuthenticationApiException;
     }
 }
 

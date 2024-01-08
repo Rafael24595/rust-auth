@@ -24,7 +24,19 @@ pub(crate) fn new(pubkey_name: String, prikey_name: String, module: String, form
 }
 
 impl CryptoConfiguration {
+
+    pub fn module(&self) -> String {
+        return self.module.clone();
+    }
     
+    pub fn format(&self) -> String {
+        return self.format.clone();
+    }
+
+    pub fn pass_phrase(&self) -> String {
+        return self.pass_phrase.clone();
+    }
+
     fn find_manager(&self) -> Result<impl CryptoManager::CryptoManager, String> {
         match self.module.as_str() {
             Rsa::MODULE_CODE => {
@@ -36,7 +48,7 @@ impl CryptoConfiguration {
         }
     }
 
-    pub(crate) fn decrypt_message(&self, encrypted_message: &[u8]) -> Result<String, String> {
+    pub fn decrypt_message(&self, encrypted_message: &[u8]) -> Result<String, String> {
         let priv_string = self.read_private();
         if priv_string.is_err() {
             return Err(priv_string.err().unwrap().to_string());
@@ -50,7 +62,7 @@ impl CryptoConfiguration {
         return module.unwrap().decrypt(priv_string.unwrap(), encrypted_message);
     }
     
-    pub(crate) fn encrypt_message(encrypted_message: &[u8]) -> Result<String, ()> {
+    pub fn encrypt_message(encrypted_message: &[u8]) -> Result<String, ()> {
         Ok(String::new())
     }
 

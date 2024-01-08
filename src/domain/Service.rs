@@ -1,6 +1,6 @@
 use crate::domain::Key::Key;
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct Service {
     code: &'static str,
     uri: &'static str,
@@ -38,7 +38,7 @@ impl Service {
     }
 
     pub fn key(&self) -> Option<Key> {
-        return self.key;
+        return self.key.clone();
     }
 
     pub fn has_key(&self) -> bool {

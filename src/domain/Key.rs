@@ -1,22 +1,40 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Copy, Clone, Debug)]
+use crate::infrastructure::{DtoPubKeyResponse, DtoPubKeyRequest};
+
+#[derive(Clone, Debug)]
 pub struct Key {
-    public: &'static str,
+    key: String,
+    module: String,
+    format: String,
+    passphrase: String,
     expires: u128
 }
 
-pub(crate) fn new(public: String, expires: u128) -> Key {
+pub(crate) fn new(key: String, module: String, format: String, passphrase: String, expires: u128) -> Key {
     Key {
-        public: Box::leak(public.into_boxed_str()),
+        key: key,
+        module,
+        format,
+        passphrase,
         expires: expires
     }
+}
+
+pub(crate) fn from_dto(dto: DtoPubKeyRequest::DtoPubKeyRequest) -> Key {
+    self::new(
+        dto.key, 
+        dto.module,
+        dto.format,
+        dto.passphrase, 
+        dto.expires
+    )
 }
 
 impl Key {
     
     pub fn key(&self) -> String {
-        return self.public.to_string();
+        return self.key.to_string();
     }
 
     pub fn is_expired(&self) -> bool {
@@ -25,6 +43,15 @@ impl Key {
         let milliseconds = duration_since_epoch.as_millis();
 
         return self.expires < milliseconds;
+    }
+
+    pub fn as_dto(&self) -> DtoPubKeyResponse::DtoPubKeyResponse {
+        return DtoPubKeyResponse::new(
+            self.key.clone(), 
+            self.module.clone(), 
+            self.format.clone(), 
+            self.passphrase.clone()
+        );
     }
     
 }

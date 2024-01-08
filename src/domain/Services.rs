@@ -23,7 +23,7 @@ pub(crate) fn find(code: &str) -> Option<Service::Service> {
     let services = INSTANCE.lock().unwrap();
     let service = services.services.get(code);
     if service.is_some() {
-        return Some(*service.unwrap());
+        return Some(service.unwrap().clone());
     }
     return None;
 }
@@ -40,6 +40,6 @@ pub(crate) fn insert_service(service: Service::Service) -> Service::Service {
 }
 
 pub(crate) fn update(service: Service::Service) -> Service::Service {
-    INSTANCE.lock().unwrap().services.insert(service.code(), service);
+    INSTANCE.lock().unwrap().services.insert(service.code(), service.clone());
     return service;
 }
