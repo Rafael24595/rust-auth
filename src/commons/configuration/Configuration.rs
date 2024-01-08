@@ -14,12 +14,18 @@ lazy_static! {
 
 #[derive(Clone)]
 pub struct Configuration {
+    self_owner: String,
     pass_tokens: Vec<PassToken::PassToken>,
     pub crypto: CryptoConfiguration,
 }
 
-pub(crate) fn new(crypto: CryptoConfiguration) -> Configuration {
+pub(crate) fn new(self_owner: Option<String>, crypto: CryptoConfiguration) -> Configuration {
+    let mut owner = SELF_OWNER.to_string();
+    if self_owner.is_some() && !self_owner.as_ref().unwrap().trim().is_empty() {
+        owner = self_owner.unwrap();
+    }
     Configuration {
+        self_owner: owner,
         pass_tokens: Vec::new(),
         crypto: crypto
     }
@@ -50,7 +56,7 @@ pub(crate) fn create_service_token() -> PassToken::PassToken {
        return create_service_token();
     }
 
-    let token = PassToken::new(uuid.clone(), SELF_OWNER.to_string());
+    let token = PassToken::new(uuid.clone(), instance().self_owner);
     let _ = push_token(token.clone());
     return token;
 }
@@ -64,12 +70,12 @@ pub(crate) fn push_token(token: PassToken::PassToken) -> Result<PassToken::PassT
 
 pub(crate) fn deprecate_token(uuid: String) -> Option<PassToken::PassToken> {
     let mut binding = INSTANCE.lock().expect("Could not lock mutex");
-    let instance = binding.as_mut().unwrap();
-    let o_index = instance.pass_tokens.iter().position(|t| t.uuid() == uuid);
+    let conf = binding.as_mut().unwrap();
+    let o_index = conf.pass_tokens.iter().position(|t| t.uuid() == uuid);
     if let Some(index) = o_index {
-        let pass = instance.pass_tokens.index_mut(index);
+        let pass = conf.pass_tokens.index_mut(index);
         pass.exposed();
-        if pass.owner() == SELF_OWNER {
+        if pass.owner() == instance().self_owner {
             create_service_token();
         }
         return Some(pass.clone());

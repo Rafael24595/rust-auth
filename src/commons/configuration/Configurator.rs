@@ -13,6 +13,8 @@ pub(crate) fn initialize() {
 }
 
 fn initialize_configuration() -> Configuration::Configuration {
+    let self_owner = std::env::var("SELF_OWNER");
+
     let pubkey_name = std::env::var("KEY_PUBKEY_NAME");
     let prikey_name = std::env::var("KEY_PRIKEY_NAME");
     let module = std::env::var("KEY_TYPE");
@@ -33,7 +35,7 @@ fn initialize_configuration() -> Configuration::Configuration {
         pass_phrase.unwrap_or_default()
     );
 
-    let conf = Configuration::new(crypto);
+    let conf = Configuration::new(self_owner.ok(), crypto);
     
     Configuration::initialize(conf.clone());
 
