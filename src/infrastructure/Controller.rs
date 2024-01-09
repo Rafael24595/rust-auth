@@ -1,9 +1,9 @@
 use axum::{
-    extract::{Json, Host},
-    extract::Path,
+    extract::{Json, Host, Path, Request},
+    response::Response,
     routing::{get, post},
     http::StatusCode,
-    Router,
+    Router, body::Body,
 };
 
 use crate::infrastructure::{Service, DtoService, DtoPubKeyResponse};
@@ -14,6 +14,17 @@ pub fn route(router: Router) -> Router {
         .route("/:service/subscribe", post(subscribe))
         .route("/:service/status", get(status))
         .route("/:service/key", get(key))
+
+        .route("/:service/resolve/*path", 
+            get(resolve)
+            .head(resolve)
+            .post(resolve)
+            .put(resolve)
+            .delete(resolve)
+            .options(resolve)
+            .trace(resolve)
+            .patch(resolve)
+        )
 }
 
 async fn nodekey() -> Result<(StatusCode, Json<DtoPubKeyResponse::DtoPubKeyResponse>), (StatusCode, String)> {
@@ -73,4 +84,13 @@ async fn key(Path(service): Path<String>) -> Result<(StatusCode, Json<DtoPubKeyR
     }
 
     return Err((StatusCode::NOT_FOUND, String::from("Not found")));
+}
+
+async fn resolve(request: Request) ->  Response<Body> {
+    let response = Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "text/html")
+        .body(Body::from("Hello world!"))
+        .unwrap();
+    return response;
 }
