@@ -1,8 +1,10 @@
 use std::fs::File;
 use std::io::Read;
+use reqwest::StatusCode;
 
 use crate::commons::crypto::modules::{CryptoManager, Rsa};
 use crate::commons::crypto::modules::CryptoManager::CryptoManager as _;
+use crate::commons::exception::AuthenticationApiException;
 
 #[derive(Clone)]
 pub struct CryptoConfiguration {
@@ -48,15 +50,15 @@ impl CryptoConfiguration {
         }
     }
 
-    pub fn decrypt_message(&self, encrypted_message: &[u8]) -> Result<String, String> {
+    pub fn decrypt_message(&self, encrypted_message: &[u8]) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
         let priv_string = self.read_private();
         if priv_string.is_err() {
-            return Err(priv_string.err().unwrap().to_string());
+            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), priv_string.err().unwrap().to_string()));
         }
 
         let module = self.find_manager();
         if module.is_err() {
-            return Err(module.err().unwrap().to_string());
+            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), module.err().unwrap().to_string()));
         }
 
         return module.unwrap().decrypt(priv_string.unwrap(), encrypted_message);
@@ -66,28 +68,27 @@ impl CryptoConfiguration {
         Ok(String::new())
     }
 
-    fn read_private(&self) -> Result<String, String> {
+    fn read_private(&self) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
         return self.read_key(self.prikey_name.clone());
     }
     
-    pub fn read_public(&self) -> Result<String, String> {
+    pub fn read_public(&self) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
         return self.read_key(self.pubkey_name.clone());
     }
     
-    fn read_key(&self, name: String) -> Result<String, String> {
+    fn read_key(&self, name: String) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
         let file_path = String::from("./assets/keys/") + &name;
         let file = File::open(file_path);
     
         if file.is_err() {
-            return Err(file.err().unwrap().to_string());
+            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), file.err().unwrap().to_string()));
         }
     
         let mut key = String::new();
         let result = file.unwrap().read_to_string(&mut key);
     
         if result.is_err() {
-            println!("{}", result.err().unwrap().to_string());
-            return Err(String::new());
+            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), result.err().unwrap().to_string()));
         }
 
         let key_clean = key

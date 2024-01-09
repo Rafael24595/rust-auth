@@ -40,8 +40,7 @@ pub(crate) async fn subscribe(code: String, host: String, dto: DtoService::DtoSe
     let encrypted_message = general_purpose::STANDARD.decode(dto.pass_key).unwrap();
     let r_uuid = crypto.decrypt_message(&encrypted_message);
     if r_uuid.is_err() {
-        let message = r_uuid.err().unwrap();
-        return Err(AuthenticationApiException::new(StatusCode::FORBIDDEN.as_u16(), message));
+        return Err(r_uuid.err().unwrap());
     }
 
     let uuid = r_uuid.unwrap();
