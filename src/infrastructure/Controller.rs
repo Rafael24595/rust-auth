@@ -90,7 +90,8 @@ async fn resolve(Path((service, path)): Path<(String, String)>, request: Request
     let method = request.method().to_string();
     let header = request.headers();
     let query = request.uri().query().unwrap_or_default();
-    let mut body = String::new();    let b_body = to_bytes(request.into_body(), usize::MAX).await;
+    let mut body = String::new();
+    let b_body = to_bytes(request.into_body(), usize::MAX).await;
     if b_body.is_ok() {
         body = String::from_utf8_lossy(&b_body.unwrap()).to_string();
     }
