@@ -3,7 +3,7 @@ use axum::{
     response::Response,
     routing::{get, post},
     http::StatusCode,
-    Router, body::Body,
+    Router, body::{Body, to_bytes},
 };
 
 use crate::infrastructure::{Service, DtoService, DtoPubKeyResponse};
@@ -86,7 +86,15 @@ async fn key(Path(service): Path<String>) -> Result<(StatusCode, Json<DtoPubKeyR
     return Err((StatusCode::NOT_FOUND, String::from("Not found")));
 }
 
-async fn resolve(request: Request) ->  Response<Body> {
+async fn resolve(Path((service, path)): Path<(String, String)>, request: Request) ->  Response<Body> {
+    let method = request.method().to_string();
+    let header = request.headers();
+    let query = request.uri().query().unwrap_or_default();
+    let mut body = String::new();    let b_body = to_bytes(request.into_body(), usize::MAX).await;
+    if b_body.is_ok() {
+        body = String::from_utf8_lossy(&b_body.unwrap()).to_string();
+    }
+    
     let response = Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "text/html")
