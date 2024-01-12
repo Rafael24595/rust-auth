@@ -6,7 +6,10 @@ use axum::{
     Router, body::{Body, to_bytes},
 };
 
-use crate::infrastructure::{Service, DtoService, DtoPubKeyResponse};
+use crate::infrastructure::{
+    Service, DtoService, DtoPubKeyResponse,
+    entity::{CryptoRequest, HeaderParameter, QueryParameter}
+};
 
 pub fn route(router: Router) -> Router {
     return router
@@ -88,12 +91,27 @@ async fn key(Path(service): Path<String>) -> Result<(StatusCode, Json<DtoPubKeyR
 
 async fn resolve(Path((service, path)): Path<(String, String)>, request: Request) ->  Response<Body> {
     let method = request.method().to_string();
-    let header = request.headers();
-    let query = request.uri().query().unwrap_or_default();
-    let mut body = String::new();
+    let headers = request.headers().clone();
+    let uri = request.uri().clone();
+    let query = uri.query().unwrap_or_default();
+    let mut body = Vec::new();
     let b_body = to_bytes(request.into_body(), usize::MAX).await;
     if b_body.is_ok() {
-        body = String::from_utf8_lossy(&b_body.unwrap()).to_string();
+        body = b_body.unwrap().to_vec();
+        //body = String::from_utf8_lossy(&b_body.unwrap()).to_string();
+    }
+
+    let mut crypto_request = CryptoRequest::new();
+    crypto_request.setMethod(method);
+    crypto_request.setService(service);
+    crypto_request.setPath(path);
+    crypto_request.setQuery(query);
+    crypto_request.setBody(body);
+
+    for (o_name, b_value) in headers {
+        let name = o_name.unwrap().to_string();
+        let value = b_value.to_str().unwrap().to_string();
+        crypto_request.addHeaderParameterTuple(name, value);
     }
     
     let response = Response::builder()

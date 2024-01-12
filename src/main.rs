@@ -1,10 +1,14 @@
 mod infrastructure {
-    pub mod Controller;
+    pub mod controller;
     pub mod Service;
     pub mod DtoPubKeyRequest;
     pub mod DtoService;
     pub mod DtoPubKeyResponse;
-    mod controller;
+    pub mod entity {
+        pub mod HeaderParameter;
+        pub mod QueryParameter;
+        pub mod CryptoRequest;
+    }
 }
 
 mod commons {
@@ -33,7 +37,7 @@ mod domain {
 
 use axum::Router;
 use commons::configuration::Configurator;
-use infrastructure::Controller;
+use infrastructure::controller;
 
 #[tokio::main]
 async fn main() {
@@ -43,7 +47,7 @@ async fn main() {
     Configurator::initialize();
 
     let mut app = Router::new();
-    app = Controller::route(app);
+    app = controller::route(app);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
