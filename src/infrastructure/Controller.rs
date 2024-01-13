@@ -49,7 +49,7 @@ async fn subscribe(Host(hostname): Host, Path(service): Path<String>, Json(dto):
     let status = Service::subscribe(service, hostname, dto).await;
 
     if status.is_ok() {
-        return Ok((StatusCode::ACCEPTED, String::from("Service subscribed successfully.")));    
+        return Ok((StatusCode::ACCEPTED, status.unwrap()));    
     }
     
     if status.is_err() {
@@ -89,7 +89,7 @@ async fn key(Path(service): Path<String>) -> Result<(StatusCode, Json<DtoPubKeyR
     return Err((StatusCode::NOT_FOUND, String::from("Not found")));
 }
 
-async fn resolve(Path((service, path)): Path<(String, String)>, request: Request) ->  Response<Body> {
+async fn resolve(Host(hostname): Host, Path((service, path)): Path<(String, String)>, request: Request) ->  Response<Body> {
     let method = request.method().to_string();
     let headers = request.headers().clone();
     let uri = request.uri().clone();

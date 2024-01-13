@@ -64,8 +64,36 @@ impl CryptoConfiguration {
         return module.unwrap().decrypt(priv_string.unwrap(), encrypted_message);
     }
     
-    pub fn encrypt_message(encrypted_message: &[u8]) -> Result<String, ()> {
+    pub fn encrypt_message(&self, encrypted_message: &[u8]) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
         Ok(String::new())
+    }
+
+    pub fn sign(&self, message: String) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
+        let priv_string = self.read_private();
+        if priv_string.is_err() {
+            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), priv_string.err().unwrap().to_string()));
+        }
+
+        let module = self.find_manager();
+        if module.is_err() {
+            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), module.err().unwrap().to_string()));
+        }
+
+        return module.unwrap().sign(priv_string.unwrap(), message);
+    }
+
+    pub fn verify(&self, message: String) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
+        let priv_string = self.read_private();
+        if priv_string.is_err() {
+            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), priv_string.err().unwrap().to_string()));
+        }
+
+        let module = self.find_manager();
+        if module.is_err() {
+            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), module.err().unwrap().to_string()));
+        }
+
+        return module.unwrap().verify(priv_string.unwrap(), message);
     }
 
     fn read_private(&self) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
