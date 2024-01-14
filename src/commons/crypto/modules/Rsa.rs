@@ -37,26 +37,30 @@ pub(crate) fn new(format: String, pass_phrase: String) -> impl CryptoManager::Cr
 
 impl CryptoManager::CryptoManager for Rsa {
     
-    fn encrypt(&self, priv_string: String, encrypted_message: &[u8]) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
-        Ok(String::new())
+    fn encrypt(&self, publ_string: String, message: &[u8]) -> Result<Vec<u8>, AuthenticationApiException::AuthenticationApiException> {
+        let publ_key = self.public_key(publ_string);
+        if publ_key.is_err() {
+            return Err(publ_key.err().unwrap());
+        }
+    
+        let mut rng = rand::thread_rng();
+        let enc_data = publ_key.unwrap().encrypt(&mut rng, Pkcs1v15Encrypt, &message).expect("failed to encrypt");
+
+        Ok(enc_data)
     }
 
-    fn decrypt(&self, priv_string: String, encrypted_message: &[u8]) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
+    fn decrypt(&self, priv_string: String, encrypted_message: &[u8]) -> Result<Vec<u8>, AuthenticationApiException::AuthenticationApiException> {
         let priv_key = self.private_key(priv_string);
         if priv_key.is_err() {
             return Err(priv_key.err().unwrap());
         }
     
         let dec_data = priv_key.unwrap().decrypt(Pkcs1v15Encrypt, &encrypted_message).expect("failed to decrypt");
-        let result = String::from_utf8(dec_data);
-        if result.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::BAD_REQUEST.as_u16(), result.err().unwrap().to_string()));
-        }
 
-        Ok(result.unwrap())
+        Ok(dec_data)
     }
 
-    fn sign(&self, priv_string: String, service: String) -> Result<ServiceToken::ServiceToken, AuthenticationApiException::AuthenticationApiException> {
+    fn sign(&self, priv_string: String, service: String, expires_range: u128) -> Result<ServiceToken::ServiceToken, AuthenticationApiException::AuthenticationApiException> {
         let o_priv_key = self.private_key(priv_string);
         if o_priv_key.is_err() {
             return Err(o_priv_key.err().unwrap());
@@ -67,8 +71,8 @@ impl CryptoManager::CryptoManager for Rsa {
         let mut rng = rand::thread_rng();
         let signing_key : SigningKey<Sha256> = pkcs1v15::SigningKey::new(priv_key);
         let signature = signing_key.sign_with_rng(&mut rng, service.as_bytes());
-
-        let payload = Payload::new(service);
+        
+        let payload = Payload::new(service, expires_range);
         let token = ServiceToken::new(signature.to_bytes().to_vec(), payload);
 
         return Ok(token);

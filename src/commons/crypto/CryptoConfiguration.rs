@@ -1,6 +1,8 @@
 use std::fs::File;
 use std::io::Read;
+use std::time::{SystemTime, UNIX_EPOCH};
 use reqwest::StatusCode;
+use sha2::digest::{Update, FixedOutput};
 
 use crate::commons::crypto::modules::{CryptoManager, Rsa};
 use crate::commons::crypto::modules::CryptoManager::CryptoManager as _;
@@ -14,16 +16,18 @@ pub struct CryptoConfiguration {
     prikey_name: String,
     module: String,
     format: String,
-    pass_phrase: String
+    pass_phrase: String,
+    expires_range: u128
 }
 
-pub(crate) fn new(pubkey_name: String, prikey_name: String, module: String, format: String, pass_phrase: String) -> CryptoConfiguration {
+pub(crate) fn new(pubkey_name: String, prikey_name: String, module: String, format: String, pass_phrase: String, expires_range: u128) -> CryptoConfiguration {
     CryptoConfiguration {
         pubkey_name,
         prikey_name,
         module,
         format,
-        pass_phrase
+        pass_phrase,
+        expires_range
     }
 }
 
@@ -52,7 +56,7 @@ impl CryptoConfiguration {
         }
     }
 
-    pub fn decrypt_message(&self, encrypted_message: &[u8]) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
+    pub fn decrypt_message(&self, encrypted_message: &[u8]) -> Result<Vec<u8>, AuthenticationApiException::AuthenticationApiException> {
         let priv_string = self.read_private();
         if priv_string.is_err() {
             return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), priv_string.err().unwrap().to_string()));
@@ -66,8 +70,18 @@ impl CryptoConfiguration {
         return module.unwrap().decrypt(priv_string.unwrap(), encrypted_message);
     }
     
-    pub fn encrypt_message(&self, encrypted_message: &[u8]) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
-        Ok(String::new())
+    pub fn encrypt_message(&self, message: &[u8]) -> Result<Vec<u8>, AuthenticationApiException::AuthenticationApiException> {
+        let publ_string = self.read_public();
+        if publ_string.is_err() {
+            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), publ_string.err().unwrap().to_string()));
+        }
+
+        let module = self.find_manager();
+        if module.is_err() {
+            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), module.err().unwrap().to_string()));
+        }
+
+        return module.unwrap().encrypt(publ_string.unwrap(), message);
     }
 
     pub fn sign(&self, message: String) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
@@ -81,12 +95,32 @@ impl CryptoConfiguration {
             return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), module.err().unwrap().to_string()));
         }
 
-        let token = module.unwrap().sign(priv_string.unwrap(), message);
-        if token.is_err() {
-            return Err(token.err().unwrap());
+        let r_token = module.unwrap().sign(priv_string.unwrap(), message, self.expires_range);
+        if r_token.is_err() {
+            return Err(r_token.err().unwrap());
         }
 
-        return Ok(token.unwrap().to_string());
+        let r_hash_token = self.update_hash(r_token.unwrap());
+        if r_hash_token.is_err() {
+            return Err(r_hash_token.err().unwrap());
+        }
+
+        return Ok(r_hash_token.unwrap().to_string());
+    }
+
+    fn update_hash(&self, mut token: ServiceToken::ServiceToken) -> Result<ServiceToken::ServiceToken, AuthenticationApiException::AuthenticationApiException> {
+        let mut hash_raw: sha2::Sha256 = sha2::Digest::new();
+        hash_raw.update(token.payload().to_json().as_bytes());
+        let result = hash_raw.finalize_fixed().to_vec();
+
+        let r_hash_signed = self.encrypt_message(&result);
+        if r_hash_signed.is_err() {
+            return Err(r_hash_signed.err().unwrap());
+        }
+
+        token.set_hash(r_hash_signed.unwrap());
+
+        return Ok(token);
     }
 
     pub fn verify(&self, message: String) -> Result<(), AuthenticationApiException::AuthenticationApiException> {
@@ -105,7 +139,51 @@ impl CryptoConfiguration {
             return Err(token.err().unwrap());
         }
 
+        let lifetime_validation = self.verify_lifetime(token.clone().unwrap());
+        if lifetime_validation.is_err() {
+            return Err(lifetime_validation.err().unwrap());
+        }
+
+        let hash_validation = self.verify_hash(token.clone().unwrap());
+        if hash_validation.is_err() {
+            return Err(hash_validation.err().unwrap());
+        }
+
         return module.unwrap().verify(priv_string.unwrap(), token.unwrap());
+    }
+
+    fn verify_lifetime(&self, token: ServiceToken::ServiceToken) -> Result<(), AuthenticationApiException::AuthenticationApiException> {
+        let current_system_time = SystemTime::now();
+        let duration_since_epoch = current_system_time.duration_since(UNIX_EPOCH);
+        let timestamp = duration_since_epoch.unwrap_or_default().as_millis();
+
+        if timestamp > token.payload().expires {
+            return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), String::from("Token has expired.")));
+        }
+
+        return Ok(());
+    }
+
+    fn verify_hash(&self, token: ServiceToken::ServiceToken) -> Result<(), AuthenticationApiException::AuthenticationApiException> {
+        if token.hash().is_none() {
+            return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), String::from("Token hash not found.")));
+        }
+
+        let mut hash_raw: sha2::Sha256 = sha2::Digest::new();
+        hash_raw.update(token.payload().to_json().as_bytes());
+        let result = hash_raw.finalize_fixed().to_vec();
+
+        let r_hash_decrypted = self.decrypt_message(&token.hash().unwrap());
+        if r_hash_decrypted.is_err() {
+            return Err(r_hash_decrypted.err().unwrap());
+        }
+
+        let hash_decrypted = r_hash_decrypted.unwrap();
+        if hash_decrypted != result {
+            return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), String::from("Payload modified.")));
+        }
+
+        return Ok(());
     }
 
     fn read_private(&self) -> Result<String, AuthenticationApiException::AuthenticationApiException> {

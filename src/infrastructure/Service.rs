@@ -38,14 +38,17 @@ pub(crate) async fn subscribe(code: String, host: String, dto: DtoService::DtoSe
 
     let crypto = Configuration::instance().crypto;
     let encrypted_message = general_purpose::STANDARD.decode(dto.pass_key).unwrap();
-    let r_uuid = crypto.decrypt_message(&encrypted_message);
-    if r_uuid.is_err() {
-        return Err(r_uuid.err().unwrap());
+    let r_vec_uuid = crypto.decrypt_message(&encrypted_message);
+    if r_vec_uuid.is_err() {
+        return Err(r_vec_uuid.err().unwrap());
     }
 
-    let uuid = r_uuid.unwrap();
+    let r_uuid = String::from_utf8(r_vec_uuid.unwrap());
+    if r_uuid.is_err() {
+        return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), r_uuid.err().unwrap().to_string()));
+    }
 
-    let is_authorized = Configuration::find_active_token(uuid);
+    let is_authorized = Configuration::find_active_token(r_uuid.unwrap());
     if let Err(status) = is_authorized {
         let message = String::from("Token is not authorized. Status: ") + status.to_string();
         return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), message));

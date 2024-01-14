@@ -20,6 +20,7 @@ fn initialize_configuration() -> Configuration::Configuration {
     let module = std::env::var("KEY_TYPE");
     let format = std::env::var("KEY_FORMAT");
     let pass_phrase = std::env::var("KEY_PASSPHRASE");
+    let s_expires_range = std::env::var("EXPIRES_RANGE");
 
     if pubkey_name.is_err() || prikey_name.is_err() {
         //TODO: Exception.
@@ -27,12 +28,15 @@ fn initialize_configuration() -> Configuration::Configuration {
 
     //TODO: Valide keys.
 
+    let r_expires_range = s_expires_range.unwrap_or(String::from("900000"));
+
     let crypto = CryptoConfiguration::new(
         pubkey_name.unwrap(),
         prikey_name.unwrap(),
         module.unwrap(),
         format.unwrap(),
-        pass_phrase.unwrap_or_default()
+        pass_phrase.unwrap_or_default(),
+        r_expires_range.parse().unwrap()
     );
 
     let conf = Configuration::new(self_owner.ok(), crypto);
