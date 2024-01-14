@@ -100,27 +100,7 @@ impl CryptoConfiguration {
             return Err(r_token.err().unwrap());
         }
 
-        let r_hash_token = self.update_hash(r_token.unwrap());
-        if r_hash_token.is_err() {
-            return Err(r_hash_token.err().unwrap());
-        }
-
-        return Ok(r_hash_token.unwrap().to_string());
-    }
-
-    fn update_hash(&self, mut token: ServiceToken::ServiceToken) -> Result<ServiceToken::ServiceToken, AuthenticationApiException::AuthenticationApiException> {
-        let mut hash_raw: sha2::Sha256 = sha2::Digest::new();
-        hash_raw.update(token.payload().to_json().as_bytes());
-        let result = hash_raw.finalize_fixed().to_vec();
-
-        let r_hash_signed = self.encrypt_message(&result);
-        if r_hash_signed.is_err() {
-            return Err(r_hash_signed.err().unwrap());
-        }
-
-        token.set_hash(r_hash_signed.unwrap());
-
-        return Ok(token);
+        return Ok(r_token.unwrap().to_string());
     }
 
     pub fn verify(&self, message: String) -> Result<(), AuthenticationApiException::AuthenticationApiException> {
@@ -144,11 +124,6 @@ impl CryptoConfiguration {
             return Err(lifetime_validation.err().unwrap());
         }
 
-        let hash_validation = self.verify_hash(token.clone().unwrap());
-        if hash_validation.is_err() {
-            return Err(hash_validation.err().unwrap());
-        }
-
         return module.unwrap().verify(priv_string.unwrap(), token.unwrap());
     }
 
@@ -159,28 +134,6 @@ impl CryptoConfiguration {
 
         if timestamp > token.payload().expires {
             return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), String::from("Token has expired.")));
-        }
-
-        return Ok(());
-    }
-
-    fn verify_hash(&self, token: ServiceToken::ServiceToken) -> Result<(), AuthenticationApiException::AuthenticationApiException> {
-        if token.hash().is_none() {
-            return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), String::from("Token hash not found.")));
-        }
-
-        let mut hash_raw: sha2::Sha256 = sha2::Digest::new();
-        hash_raw.update(token.payload().to_json().as_bytes());
-        let result = hash_raw.finalize_fixed().to_vec();
-
-        let r_hash_decrypted = self.decrypt_message(&token.hash().unwrap());
-        if r_hash_decrypted.is_err() {
-            return Err(r_hash_decrypted.err().unwrap());
-        }
-
-        let hash_decrypted = r_hash_decrypted.unwrap();
-        if hash_decrypted != result {
-            return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), String::from("Payload modified.")));
         }
 
         return Ok(());

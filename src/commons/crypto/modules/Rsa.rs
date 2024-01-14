@@ -67,12 +67,13 @@ impl CryptoManager::CryptoManager for Rsa {
         }
 
         let priv_key = o_priv_key.unwrap();
+        let payload = Payload::new(service, expires_range);
 
         let mut rng = rand::thread_rng();
         let signing_key : SigningKey<Sha256> = pkcs1v15::SigningKey::new(priv_key);
-        let signature = signing_key.sign_with_rng(&mut rng, service.as_bytes());
+        //TODO: Replace with hash validation and use service value.
+        let signature = signing_key.sign_with_rng(&mut rng, payload.to_json().as_bytes());
         
-        let payload = Payload::new(service, expires_range);
         let token = ServiceToken::new(signature.to_bytes().to_vec(), payload);
 
         return Ok(token);
@@ -96,7 +97,7 @@ impl CryptoManager::CryptoManager for Rsa {
             return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), String::from("Malformed token.")));
         }
 
-        let result = verifying_key.verify(payload.service.as_bytes(), &signature.unwrap());
+        let result = verifying_key.verify(payload.to_json().as_bytes(), &signature.unwrap());
         if result.is_err() {
             return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), String::from("Unautorized.")));
         }
