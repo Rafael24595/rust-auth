@@ -6,6 +6,8 @@ use crate::commons::crypto::modules::{CryptoManager, Rsa};
 use crate::commons::crypto::modules::CryptoManager::CryptoManager as _;
 use crate::commons::exception::AuthenticationApiException;
 
+use super::ServiceToken;
+
 #[derive(Clone)]
 pub struct CryptoConfiguration {
     pubkey_name: String,
@@ -79,10 +81,15 @@ impl CryptoConfiguration {
             return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), module.err().unwrap().to_string()));
         }
 
-        return module.unwrap().sign(priv_string.unwrap(), message);
+        let token = module.unwrap().sign(priv_string.unwrap(), message);
+        if token.is_err() {
+            return Err(token.err().unwrap());
+        }
+
+        return Ok(token.unwrap().to_string());
     }
 
-    pub fn verify(&self, message: String) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
+    pub fn verify(&self, message: String) -> Result<(), AuthenticationApiException::AuthenticationApiException> {
         let priv_string = self.read_private();
         if priv_string.is_err() {
             return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), priv_string.err().unwrap().to_string()));
@@ -93,7 +100,12 @@ impl CryptoConfiguration {
             return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), module.err().unwrap().to_string()));
         }
 
-        return module.unwrap().verify(priv_string.unwrap(), message);
+        let token = ServiceToken::from_string(message);
+        if token.is_err() {
+            return Err(token.err().unwrap());
+        }
+
+        return module.unwrap().verify(priv_string.unwrap(), token.unwrap());
     }
 
     fn read_private(&self) -> Result<String, AuthenticationApiException::AuthenticationApiException> {

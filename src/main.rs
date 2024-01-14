@@ -18,6 +18,7 @@ mod commons {
     }
     pub mod crypto {
         pub mod CryptoConfiguration;
+        pub mod ServiceToken;
         pub mod Payload;
         pub mod modules {
             pub mod CryptoManager;

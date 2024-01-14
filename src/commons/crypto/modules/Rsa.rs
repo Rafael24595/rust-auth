@@ -1,4 +1,3 @@
-use base64::{engine::general_purpose, Engine as _};
 use rsa::pkcs1v15;
 use rsa::pkcs1::DecodeRsaPublicKey;
 use rsa::{Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey, pkcs1::DecodeRsaPrivateKey, pkcs8::DecodePrivateKey};
@@ -8,7 +7,7 @@ use rsa::pkcs1v15::SigningKey;
 use rsa::signature::{Keypair, RandomizedSigner, SignatureEncoding, Verifier};
 use rsa::sha2::Sha256;
 
-use crate::commons::crypto::Payload;
+use crate::commons::crypto::{Payload, ServiceToken};
 use crate::commons::{crypto::modules::CryptoManager, exception::AuthenticationApiException};
 
 pub const MODULE_CODE: &str = "RSA";
@@ -57,7 +56,7 @@ impl CryptoManager::CryptoManager for Rsa {
         Ok(result.unwrap())
     }
 
-    fn sign(&self, priv_string: String, service: String) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
+    fn sign(&self, priv_string: String, service: String) -> Result<ServiceToken::ServiceToken, AuthenticationApiException::AuthenticationApiException> {
         let o_priv_key = self.private_key(priv_string);
         if o_priv_key.is_err() {
             return Err(o_priv_key.err().unwrap());
@@ -66,22 +65,16 @@ impl CryptoManager::CryptoManager for Rsa {
         let priv_key = o_priv_key.unwrap();
 
         let mut rng = rand::thread_rng();
-        let signing_key: SigningKey<Sha256> = pkcs1v15::SigningKey::new(priv_key);
+        let signing_key : SigningKey<Sha256> = pkcs1v15::SigningKey::new(priv_key);
         let signature = signing_key.sign_with_rng(&mut rng, service.as_bytes());
 
-        let sign = general_purpose::STANDARD.encode(signature.to_bytes());
-
         let payload = Payload::new(service);
-        let json_payload = serde_json::to_string(&payload).expect("Failed to serialize to JSON");
-
-        let service_64 = general_purpose::STANDARD.encode(json_payload.as_bytes());
-
-        let token = sign + ";" + &service_64;
+        let token = ServiceToken::new(signature.to_bytes().to_vec(), payload);
 
         return Ok(token);
     }
 
-    fn verify(&self, priv_string: String, token: String) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
+    fn verify(&self, priv_string: String, token: ServiceToken::ServiceToken) -> Result<(), AuthenticationApiException::AuthenticationApiException> {
         let o_priv_key = self.private_key(priv_string);
         if o_priv_key.is_err() {
             return Err(o_priv_key.err().unwrap());
@@ -90,31 +83,21 @@ impl CryptoManager::CryptoManager for Rsa {
         let priv_key = o_priv_key.unwrap();
         let signing_key: SigningKey<Sha256> = pkcs1v15::SigningKey::new(priv_key);
         let verifying_key = signing_key.verifying_key();
+        
+        let sign: &[u8] = &token.sign();
+        let payload = token.payload();
 
-        let fragments: Vec<&str> = token.split(";").collect();
-
-        if fragments.len() != 2 {
+        let signature = pkcs1v15::Signature::try_from(sign);
+        if signature.is_err() {
             return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), String::from("Malformed token.")));
         }
 
-        let sign: &[u8] = &general_purpose::STANDARD.decode(fragments.get(0).unwrap().as_bytes()).unwrap();
-        let o_payload = String::from_utf8(general_purpose::STANDARD.decode(fragments.get(1).unwrap().as_bytes()).unwrap());
-
-        if o_payload.is_err() {
-            println!("{}", o_payload.err().unwrap());
-            return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), String::from("Malformed token.")));
-        }
-
-        let payload: Payload::Payload = serde_json::from_str(&o_payload.unwrap()).expect("Failed to deserialize JSON");
-
-        let signature = pkcs1v15::Signature::try_from(sign).unwrap();
-        let result = verifying_key.verify(payload.service.as_bytes(), &signature);
-
+        let result = verifying_key.verify(payload.service.as_bytes(), &signature.unwrap());
         if result.is_err() {
             return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), String::from("Unautorized.")));
         }
 
-        return Ok(String::new());
+        return Ok(());
     }
 
 }
