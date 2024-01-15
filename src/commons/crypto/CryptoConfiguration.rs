@@ -154,7 +154,7 @@ impl CryptoConfiguration {
         let timestamp = duration_since_epoch.unwrap_or_default().as_millis();
 
         if timestamp > token.payload().expires {
-            let refresh = (timestamp - token.payload().expires) < 24000000;
+            let refresh = (timestamp - token.payload().expires) < 240000;
             return Err((refresh, AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), String::from("Token has expired."))));
         }
 
