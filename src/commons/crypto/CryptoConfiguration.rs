@@ -2,7 +2,6 @@ use std::fs::File;
 use std::io::Read;
 use std::time::{SystemTime, UNIX_EPOCH};
 use reqwest::StatusCode;
-use sha2::digest::{Update, FixedOutput};
 
 use crate::commons::crypto::modules::{CryptoManager, Rsa};
 use crate::commons::crypto::modules::CryptoManager::CryptoManager as _;
@@ -103,7 +102,15 @@ impl CryptoConfiguration {
         return Ok(r_token.unwrap().to_string());
     }
 
-    pub fn verify(&self, message: String) -> Result<(), AuthenticationApiException::AuthenticationApiException> {
+    pub fn refresh(&self, token: ServiceToken::ServiceToken) -> Result<ServiceToken::ServiceToken, AuthenticationApiException::AuthenticationApiException> {
+        let s_token =  self.sign(token.payload().service);
+        if s_token.is_err() {
+            return Err(s_token.err().unwrap());
+        }
+        return ServiceToken::from_string(s_token.unwrap());
+    }
+
+    pub fn verify(&self, message: String) -> Result<Option<ServiceToken::ServiceToken>, AuthenticationApiException::AuthenticationApiException> {
         let priv_string = self.read_private();
         if priv_string.is_err() {
             return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), priv_string.err().unwrap().to_string()));
@@ -111,7 +118,7 @@ impl CryptoConfiguration {
 
         let module = self.find_manager();
         if module.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), module.err().unwrap().to_string()));
+            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), priv_string.err().unwrap().to_string()));
         }
 
         let token = ServiceToken::from_string(message);
@@ -120,20 +127,35 @@ impl CryptoConfiguration {
         }
 
         let lifetime_validation = self.verify_lifetime(token.clone().unwrap());
-        if lifetime_validation.is_err() {
-            return Err(lifetime_validation.err().unwrap());
+        if lifetime_validation.is_err() && !lifetime_validation.clone().err().unwrap().0 {
+            return Err(lifetime_validation.err().unwrap().1);
         }
 
-        return module.unwrap().verify(priv_string.unwrap(), token.unwrap());
+        let result = module.unwrap().verify(priv_string.unwrap(), token.clone().unwrap());
+        if result.is_err() {
+            return Err(result.err().unwrap());
+        }
+
+        let mut refresh = None;
+        if lifetime_validation.err().unwrap().0 {
+            let token_refresh = self.refresh(token.unwrap());
+            if token_refresh.is_ok() {
+                refresh = Some(token_refresh.unwrap());
+            }
+            //TODO: Log.
+        }
+
+        return Ok(refresh);
     }
 
-    fn verify_lifetime(&self, token: ServiceToken::ServiceToken) -> Result<(), AuthenticationApiException::AuthenticationApiException> {
+    fn verify_lifetime(&self, token: ServiceToken::ServiceToken) -> Result<(), (bool, AuthenticationApiException::AuthenticationApiException)> {
         let current_system_time = SystemTime::now();
         let duration_since_epoch = current_system_time.duration_since(UNIX_EPOCH);
         let timestamp = duration_since_epoch.unwrap_or_default().as_millis();
 
         if timestamp > token.payload().expires {
-            return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), String::from("Token has expired.")));
+            let refresh = (timestamp - token.payload().expires) < 24000000;
+            return Err((refresh, AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), String::from("Token has expired."))));
         }
 
         return Ok(());

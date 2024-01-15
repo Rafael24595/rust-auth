@@ -23,7 +23,7 @@ pub(crate) async fn nodekey() -> Result<DtoPubKeyResponse::DtoPubKeyResponse, Au
     return Ok(dto);
 }
 
-pub(crate) async fn subscribe(code: String, host: String, dto: DtoService::DtoService) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
+pub(crate) async fn subscribe(code: String, dto: DtoService::DtoService) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
     let o_service = Services::find(&code.as_str());
     if o_service.is_some() {
         let message = String::from("Service already registered.");
@@ -54,7 +54,7 @@ pub(crate) async fn subscribe(code: String, host: String, dto: DtoService::DtoSe
         return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), message));
     }
 
-    let service = Service::new(code.clone(), host, dto.end_point_status, dto.end_point_key);
+    let service = Service::new(code.clone(), dto.host, dto.end_point_status, dto.end_point_key);
     Services::insert_service(service);
 
     let token = Configuration::instance().crypto.sign(code);

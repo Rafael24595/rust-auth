@@ -1,23 +1,19 @@
 use axum::{
-    extract::{Json, Host, Path, Request},
-    response::Response,
+    extract::{Json, Path, Request},
     routing::{get, post},
-    http::StatusCode,
-    Router, body::{Body, to_bytes},
+    body::{Body, to_bytes}, 
+    response::Response, http::StatusCode,
+    Router, middleware,
 };
 
 use crate::infrastructure::{
-    Service, DtoService, DtoPubKeyResponse,
-    entity::{CryptoRequest, HeaderParameter, QueryParameter}
+    entity::CryptoRequest,
+    Handler, Service, 
+    DtoService, DtoPubKeyResponse,
 };
 
 pub fn route(router: Router) -> Router {
-    return router
-        .route("/nodekey", get(nodekey))
-        .route("/:service/subscribe", post(subscribe))
-        .route("/:service/status", get(status))
-        .route("/:service/key", get(key))
-
+    return router    
         .route("/:service/resolve/*path", 
             get(resolve)
             .head(resolve)
@@ -28,6 +24,12 @@ pub fn route(router: Router) -> Router {
             .trace(resolve)
             .patch(resolve)
         )
+        .route_layer(middleware::from_fn(Handler::auth_handler))
+
+        .route("/nodekey", get(nodekey))
+        .route("/:service/subscribe", post(subscribe))
+        .route("/:service/status", get(status))
+        .route("/:service/key", get(key))
 }
 
 async fn nodekey() -> Result<(StatusCode, Json<DtoPubKeyResponse::DtoPubKeyResponse>), (StatusCode, String)> {
@@ -45,8 +47,8 @@ async fn nodekey() -> Result<(StatusCode, Json<DtoPubKeyResponse::DtoPubKeyRespo
     return Err((StatusCode::NOT_FOUND, "Not found".to_string()));
 }
 
-async fn subscribe(Host(hostname): Host, Path(service): Path<String>, Json(dto): Json<DtoService::DtoService>) -> Result<(StatusCode, String), (StatusCode, String)> {
-    let status = Service::subscribe(service, hostname, dto).await;
+async fn subscribe(Path(service): Path<String>, Json(dto): Json<DtoService::DtoService>) -> Result<(StatusCode, String), (StatusCode, String)> {
+    let status = Service::subscribe(service, dto).await;
 
     if status.is_ok() {
         return Ok((StatusCode::ACCEPTED, status.unwrap()));    
@@ -89,7 +91,7 @@ async fn key(Path(service): Path<String>) -> Result<(StatusCode, Json<DtoPubKeyR
     return Err((StatusCode::NOT_FOUND, String::from("Not found")));
 }
 
-async fn resolve(Host(hostname): Host, Path((service, path)): Path<(String, String)>, request: Request) ->  Response<Body> {
+async fn resolve(Path((service, path)): Path<(String, String)>, request: Request) ->  Response<Body> {
     let method = request.method().to_string();
     let headers = request.headers().clone();
     let uri = request.uri().clone();

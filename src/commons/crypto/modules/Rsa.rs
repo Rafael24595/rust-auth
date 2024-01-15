@@ -79,7 +79,7 @@ impl CryptoManager::CryptoManager for Rsa {
         return Ok(token);
     }
 
-    fn verify(&self, priv_string: String, token: ServiceToken::ServiceToken) -> Result<(), AuthenticationApiException::AuthenticationApiException> {
+    fn verify(&self, priv_string: String, token: ServiceToken::ServiceToken) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
         let o_priv_key = self.private_key(priv_string);
         if o_priv_key.is_err() {
             return Err(o_priv_key.err().unwrap());
@@ -102,7 +102,7 @@ impl CryptoManager::CryptoManager for Rsa {
             return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), String::from("Unautorized.")));
         }
 
-        return Ok(());
+        return Ok(payload.service);
     }
 
 }
