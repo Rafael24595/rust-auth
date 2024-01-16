@@ -7,6 +7,9 @@ use crate::domain::{Services,Key};
 use crate::infrastructure::{DtoPubKeyRequest, DtoService, DtoPubKeyResponse};
 use crate::commons::configuration::Configuration;
 
+use crate::infrastructure::CryptoClient;
+use crate::infrastructure::entity::{CryptoRequest, CryptoResponse};
+
 pub(crate) async fn nodekey() -> Result<DtoPubKeyResponse::DtoPubKeyResponse, AuthenticationApiException::AuthenticationApiException> {
     let crypto = Configuration::instance().crypto;
 
@@ -132,6 +135,11 @@ pub(crate) async fn key(service: String) -> Result<DtoPubKeyResponse::DtoPubKeyR
     }
 
     return Err(AuthenticationApiException::new(StatusCode::BAD_REQUEST.as_u16(), String::from("Service not defined.")));
+}
+
+pub(crate) async fn resolve(crypto_request: CryptoRequest::CryptoRequest) -> Result<CryptoResponse::CryptoResponse, AuthenticationApiException::AuthenticationApiException> {
+    let mut client = CryptoClient::from_request(crypto_request);
+    return client.launch().await;
 }
 
 fn valide_message(dto: DtoService::DtoService) -> Result<(), String> {

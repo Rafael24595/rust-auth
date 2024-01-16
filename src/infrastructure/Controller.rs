@@ -100,21 +100,22 @@ async fn resolve(Path((service, path)): Path<(String, String)>, request: Request
     let b_body = to_bytes(request.into_body(), usize::MAX).await;
     if b_body.is_ok() {
         body = b_body.unwrap().to_vec();
-        //body = String::from_utf8_lossy(&b_body.unwrap()).to_string();
     }
 
     let mut crypto_request = CryptoRequest::new();
-    crypto_request.setMethod(method);
-    crypto_request.setService(service);
-    crypto_request.setPath(path);
-    crypto_request.setQuery(query);
-    crypto_request.setBody(body);
+    crypto_request.set_method(method);
+    crypto_request.set_service(service);
+    crypto_request.set_path(path);
+    crypto_request.set_query(query);
+    crypto_request.set_body(body);
 
     for (o_name, b_value) in headers {
         let name = o_name.unwrap().to_string();
         let value = b_value.to_str().unwrap().to_string();
-        crypto_request.addHeaderParameterTuple(name, value);
+        crypto_request.add_header_parameter_tuple(name, value);
     }
+
+    let crypto_response = Service::resolve(crypto_request).await;
     
     let response = Response::builder()
         .status(StatusCode::OK)

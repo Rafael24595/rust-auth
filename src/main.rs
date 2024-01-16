@@ -2,6 +2,7 @@ mod infrastructure {
     pub mod Controller;
     pub mod Handler;
     pub mod Service;
+    pub mod CryptoClient;
     pub mod DtoPubKeyRequest;
     pub mod DtoService;
     pub mod DtoPubKeyResponse;
@@ -9,6 +10,7 @@ mod infrastructure {
         pub mod HeaderParameter;
         pub mod QueryParameter;
         pub mod CryptoRequest;
+        pub mod CryptoResponse;
     }
 }
 

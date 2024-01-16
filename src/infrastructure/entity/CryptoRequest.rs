@@ -23,33 +23,64 @@ pub(crate) fn new() -> CryptoRequest {
 
 impl CryptoRequest {
     
-    pub fn setMethod(&mut self, method: String) {
+    pub fn method(&self) -> String {
+        return self.method.clone();
+    }
+
+    pub fn service(&self) -> String {
+        return self.service.clone();
+    }
+
+    pub fn uri(&self) -> String {
+        let mut query = self.query();
+        if !query.is_empty() {
+            query = String::from("?") + &query;
+        }
+        return self.path.clone() + &query;
+    }
+
+    pub fn query(&self) -> String {
+        let query: Vec<String> = self.query_params.iter()
+            .map(|p| p.key() + "=" + &p.value())
+            .collect();
+        return query.join("&");
+    }
+
+    pub fn body(&self) -> Vec<u8> {
+        return self.body.clone();
+    }
+
+    pub fn headers(&self) -> Vec<HeaderParameter::HeaderParameter> {
+        return self.headers.clone();
+    }
+
+    pub fn set_method(&mut self, method: String) {
         self.method = method;
     }
 
-    pub fn setService(&mut self, service: String) {
+    pub fn set_service(&mut self, service: String) {
         self.service = service;
     }
 
-    pub fn setQuery(&mut self, query: &str) {
+    pub fn set_query(&mut self, query: &str) {
         let query_fragments = query.split("&");
         for fragment in query_fragments {
             let e_query = QueryParameter::from(fragment);
             if e_query.is_some() {
-                self.addQueryParameter(e_query.unwrap());
+                self.add_query_parameter(e_query.unwrap());
             }
         }
     }
 
-    pub fn setPath(&mut self, path: String) {
+    pub fn set_path(&mut self, path: String) {
         self.path = path;
     }
 
-    pub fn setBody(&mut self, body: Vec<u8>) {
+    pub fn set_body(&mut self, body: Vec<u8>) {
         self.body = body;
     }
 
-    pub fn addQueryParameter(&mut self, query: QueryParameter::QueryParameter) -> Option<QueryParameter::QueryParameter> {
+    pub fn add_query_parameter(&mut self, query: QueryParameter::QueryParameter) -> Option<QueryParameter::QueryParameter> {
         let mut original = None;
         let index = self.query_params.iter().position(|q| q.key() == query.key());
         if index.is_some() {
@@ -59,7 +90,7 @@ impl CryptoRequest {
         return original;
     }
 
-    pub fn addHeaderParameter(&mut self, header: HeaderParameter::HeaderParameter) -> HeaderParameter::HeaderParameter {
+    pub fn add_header_parameter(&mut self, header: HeaderParameter::HeaderParameter) -> HeaderParameter::HeaderParameter {
         let index = self.headers.iter().position(|h| h.key() == header.key());
         if index.is_some() {
             let header_base = self.headers.get_mut(index.unwrap()).unwrap();
@@ -70,9 +101,9 @@ impl CryptoRequest {
         return header;
     }
 
-    pub fn addHeaderParameterTuple(&mut self, key: String, value: String) -> HeaderParameter::HeaderParameter {
+    pub fn add_header_parameter_tuple(&mut self, key: String, value: String) -> HeaderParameter::HeaderParameter {
         let header = HeaderParameter::new(key, value);
-        return self.addHeaderParameter(header);
+        return self.add_header_parameter(header);
     }
 
 }
