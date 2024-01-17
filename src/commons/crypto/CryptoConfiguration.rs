@@ -139,7 +139,7 @@ impl CryptoConfiguration {
         }
 
         let mut refresh = None;
-        if lifetime_validation.err().unwrap().0 {
+        if lifetime_validation.is_err() && lifetime_validation.err().unwrap().0 {
             let token_refresh = self.refresh(token.unwrap());
             if token_refresh.is_ok() {
                 refresh = Some(token_refresh.unwrap());

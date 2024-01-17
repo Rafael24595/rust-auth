@@ -17,6 +17,18 @@ pub(crate) fn new() -> CryptoResponse {
 
 impl CryptoResponse {
     
+    pub fn status(&self) -> u16 {
+        return self.status;
+    }
+
+    pub fn headers(&self) -> Vec<HeaderParameter::HeaderParameter> {
+        return self.headers.clone();
+    }
+
+    pub fn body(&self) -> Vec<u8> {
+        return self.body.clone();
+    }
+
     pub fn set_body (&mut self, body: Vec<u8>) {
         self.body = body;
     }

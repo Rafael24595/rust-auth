@@ -36,13 +36,13 @@ impl CryptoClient {
     pub async fn launch(&mut self) -> Result<CryptoResponse::CryptoResponse, AuthenticationApiException::AuthenticationApiException> {
         let o_service = Services::find(&&self.request.service());
         if o_service.is_none() {
-
+            return Err(AuthenticationApiException::new(StatusCode::BAD_REQUEST.as_u16(), String::from("Service is not defined.")));
         }
         
         let client = reqwest::Client::new();
         
         let host = o_service.unwrap().uri();
-        let uri = host + &self.request.uri();
+        let uri = host + "/" + &self.request.uri();
         let method = self.request.method();
 
         let mut petition;
@@ -53,8 +53,10 @@ impl CryptoClient {
             "PUT" => petition = client.put(uri),
             "DELETE" => petition = client.delete(uri),
             "PATCH" => petition = client.patch(uri),
-            //TODO: Log others.
-            _ => return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), String::from("Method not found"))),
+            "OPTION" | "TRACE" => 
+                return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), String::from("Method not allowed yet."))),
+            _ => 
+                return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), String::from("Method not found"))),
         };
 
         if method != "GET" {
@@ -65,7 +67,7 @@ impl CryptoClient {
 
         for header in self.request.headers() {
             let key = header.key();
-            if key != Configuration::COOKIE_NAME{
+            if !key.eq_ignore_ascii_case(Configuration::COOKIE_NAME) {
                 for value in header.values() {
                     petition = petition.header(key.clone(), value);
                 }

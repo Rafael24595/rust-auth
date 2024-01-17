@@ -7,7 +7,7 @@ use crate::domain::PassToken;
 use crate::commons::crypto::CryptoConfiguration::CryptoConfiguration;
 
 pub const SELF_OWNER: &str = "ADMIN_CERBERUS";
-pub const COOKIE_NAME: &str = "Pass-Token";
+pub const COOKIE_NAME: &str = "pass-token";
 
 lazy_static! {
     static ref INSTANCE: Mutex<Option<Configuration>> = Mutex::new(None);

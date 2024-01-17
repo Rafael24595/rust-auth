@@ -9,8 +9,7 @@ use axum::{
 use crate::infrastructure::{
     entity::CryptoRequest,
     Handler, Service, 
-    DtoService, DtoPubKeyResponse,
-};
+    DtoService, DtoPubKeyResponse};
 
 pub fn route(router: Router) -> Router {
     return router    
@@ -91,7 +90,7 @@ async fn key(Path(service): Path<String>) -> Result<(StatusCode, Json<DtoPubKeyR
     return Err((StatusCode::NOT_FOUND, String::from("Not found")));
 }
 
-async fn resolve(Path((service, path)): Path<(String, String)>, request: Request) ->  Response<Body> {
+async fn resolve(Path((service, path)): Path<(String, String)>, request: Request) -> Result<Response<Body>, (StatusCode, String)>  {
     let method = request.method().to_string();
     let headers = request.headers().clone();
     let uri = request.uri().clone();
@@ -115,12 +114,28 @@ async fn resolve(Path((service, path)): Path<(String, String)>, request: Request
         crypto_request.add_header_parameter_tuple(name, value);
     }
 
-    let crypto_response = Service::resolve(crypto_request).await;
+    let r_crypto_response = Service::resolve(crypto_request).await;
+    if r_crypto_response.is_err() {
+        let error = r_crypto_response.err().unwrap();
+        return Err((StatusCode::from_u16(error.status()).unwrap_or_default(), error.message()));    
+    }
+    let crypto_response = r_crypto_response.unwrap();
+
+    let mut response = Response::builder();
+    response = response.status(crypto_response.status());
+
+    for header in crypto_response.headers() {
+        let key = header.key();
+        for value in header.values() {
+            response = response.header(key.clone(), value);
+        }
+    }
     
-    let response = Response::builder()
-        .status(StatusCode::OK)
-        .header("Content-Type", "text/html")
-        .body(Body::from("Hello world!"))
-        .unwrap();
-    return response;
+    let r_response = response.body(Body::from(crypto_response.body()));
+    if r_response.is_err() {
+        let error = r_response.err().unwrap();
+        return Err((StatusCode::INTERNAL_SERVER_ERROR, error.to_string()));    
+    }
+
+    return Ok(r_response.unwrap());
 }
