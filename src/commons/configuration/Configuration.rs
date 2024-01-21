@@ -8,6 +8,7 @@ use crate::commons::crypto::CryptoConfiguration::CryptoConfiguration;
 
 pub const SELF_OWNER: &str = "ADMIN_CERBERUS";
 pub const COOKIE_NAME: &str = "pass-token";
+pub const HEADER_INTEGRITY_NAME: &str = "crypto-integrity";
 
 lazy_static! {
     static ref INSTANCE: Mutex<Option<Configuration>> = Mutex::new(None);
@@ -87,11 +88,62 @@ pub(crate) fn deprecate_token(uuid: String) -> Option<PassToken::PassToken> {
 pub(crate) fn includes_active_token(message: String) -> Result<String, ()> {
     let instance = instance();
     for token in instance.pass_tokens {
-        if token.is_active() && message.contains(&token.uuid()) {
+        if token.is_active() && token_finder(message.clone(), token.uuid()) {
             return Ok(token.uuid());
         }
     }
     return Err(());
+}
+
+fn token_finder(message: String, token: String) -> bool {
+    let normal_coincidence = find_key(token.clone(), message.clone());
+    if normal_coincidence.eq_ignore_ascii_case(&token) {
+        return true;
+    }
+
+    let reverse_token = token.chars().rev().collect::<String>();
+    let reverse_coincidence = find_key(reverse_token.clone(), message.clone());
+    if reverse_coincidence.eq_ignore_ascii_case(&reverse_token) {
+        return true;
+    }
+
+    let fragments_normal = find_key_fragments(token.clone(), message.clone());
+    let fragments_reversed = find_key_fragments(reverse_token.clone(), message.clone());
+    let mut fragments: Vec<String> = fragments_reversed.iter().map(|f| f.chars().rev().collect::<String>()).collect();
+    fragments.append(&mut fragments_normal.clone());
+
+    for fragment in fragments {
+        let percentage = fragment.len() as f64 / token.len() as f64;
+        if percentage > 0.85 && token.contains(&fragment) {
+            return true;       
+        }
+    }
+
+    return false;
+}
+
+fn find_key_fragments(key: String, input: String) -> Vec<String> {
+    let mut fragments = Vec::<String>::new();
+    for (index, _) in key.chars().enumerate() {
+        let substring = &key[index..];
+        let result = find_key(substring.to_string(), input.clone());
+        if !result.is_empty() {
+            fragments.push(result);
+        }
+    }
+    return fragments;
+}
+
+fn find_key(key: String, input: String) -> String {
+    let mut last_coincidence = String::new();
+    for char in input.to_lowercase().chars() {
+        let coincidence = last_coincidence.clone() + &char.to_string();
+        if key.starts_with(&coincidence) {
+            last_coincidence = coincidence;
+        }
+    }
+
+    return last_coincidence;
 }
 
 pub(crate) fn find_token(uuid: String) -> bool {

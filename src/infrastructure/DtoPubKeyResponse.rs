@@ -5,14 +5,14 @@ pub struct DtoPubKeyResponse {
     pub key: String,
     pub module: String,
     pub format: String,
-    pub passphrase: String
+    pub pass_phrase: String
 }
 
-pub(crate) fn new(key: String, module: String, format: String, passphrase: String) -> DtoPubKeyResponse {
+pub(crate) fn new(key: String, module: String, format: String, pass_phrase: String) -> DtoPubKeyResponse {
     return DtoPubKeyResponse {
         key,
         module,
         format,
-        passphrase
+        pass_phrase
     };
 }

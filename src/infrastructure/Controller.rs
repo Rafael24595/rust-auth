@@ -23,12 +23,12 @@ pub fn route(router: Router) -> Router {
             .trace(resolve)
             .patch(resolve)
         )
+        .route("/:service/status", get(status))
+        .route("/:service/key", get(key))
         .route_layer(middleware::from_fn(Handler::auth_handler))
 
         .route("/nodekey", get(nodekey))
         .route("/:service/subscribe", post(subscribe))
-        .route("/:service/status", get(status))
-        .route("/:service/key", get(key))
 }
 
 async fn nodekey() -> Result<(StatusCode, Json<DtoPubKeyResponse::DtoPubKeyResponse>), (StatusCode, String)> {

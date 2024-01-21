@@ -32,6 +32,17 @@ pub(crate) fn new(pubkey_name: String, prikey_name: String, module: String, form
     }
 }
 
+pub(crate) fn find_manager(module: String, format: String, pass_phrase: String) -> Result<impl CryptoManager::CryptoManager, String> {
+    match module.as_str() {
+        Rsa::MODULE_CODE => {
+            return Ok(Rsa::new(format.clone(), pass_phrase.clone()));
+        }
+        _ => {
+            Err(String::from("Module not dound."))
+        }
+    }
+}
+
 impl CryptoConfiguration {
 
     pub fn module(&self) -> String {
@@ -47,14 +58,7 @@ impl CryptoConfiguration {
     }
 
     fn find_manager(&self) -> Result<impl CryptoManager::CryptoManager, String> {
-        match self.module.as_str() {
-            Rsa::MODULE_CODE => {
-                return Ok(Rsa::new(self.format.clone(), self.pass_phrase.clone()));
-            }
-            _ => {
-                Err(String::from("Module not dound."))
-            }
-        }
+        return find_manager(self.module.clone(), self.format.clone(), self.pass_phrase.clone());
     }
 
     pub fn decrypt_message(&self, encrypted_message: &[u8]) -> Result<Vec<u8>, AuthenticationApiException::AuthenticationApiException> {

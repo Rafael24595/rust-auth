@@ -1,7 +1,7 @@
 use dotenv::dotenv;
 
 use crate::commons::crypto::CryptoConfiguration;
-use crate::domain::Services;
+use crate::domain::{Services, PassToken};
 
 use crate::commons::configuration::Configuration::{self, create_service_token};
 
@@ -10,6 +10,7 @@ pub(crate) fn initialize() {
 
     initialize_configuration();
     initialize_services();
+    initialize_pass_tokens();
 }
 
 fn initialize_configuration() -> Configuration::Configuration {
@@ -68,6 +69,30 @@ fn find_services() -> Vec<String> {
     let services_chain = std::env::var("SERVICE_CODES");
     if services_chain.is_ok() {
         return services_chain.unwrap()
+            .split("&")
+            .map(|s| s.to_string())
+            .collect();
+    }
+    return Vec::new();
+}
+
+pub(crate) fn initialize_pass_tokens() {
+    let owners = find_pass_tokens();
+    for owner in owners {
+        let uuid = std::env::var(owner.to_uppercase() + "_UUID");
+        if uuid.is_ok() {
+            let token = PassToken::new(uuid.unwrap().clone(), owner);
+            let _ = Configuration::push_token(token.clone());
+        } else {
+            //TODO: Log.
+        }
+    }
+}
+
+fn find_pass_tokens() -> Vec<String> {
+    let ownsers_chain = std::env::var("PASS_TOKEN_OWNERS");
+    if ownsers_chain.is_ok() {
+        return ownsers_chain.unwrap()
             .split("&")
             .map(|s| s.to_string())
             .collect();

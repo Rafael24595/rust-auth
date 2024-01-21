@@ -73,7 +73,6 @@ impl CryptoClient {
                 }
             }
         }
-        
 
         let o_response = petition.send().await;
         if o_response.is_err() {
