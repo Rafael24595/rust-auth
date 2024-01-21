@@ -1,6 +1,6 @@
 use reqwest::StatusCode;
 
-use crate::{infrastructure::entity::{CryptoRequest, CryptoResponse}, domain::Services, commons::{exception::AuthenticationApiException, configuration::Configuration}};
+use crate::{infrastructure::{DtoPubKeyRequest, entity::{CryptoRequest, CryptoResponse}}, domain::{Services, Service}, commons::{exception::AuthenticationApiException, configuration::Configuration}};
 
 #[derive(Clone, Debug)]
 pub struct CryptoClient {
@@ -17,6 +17,45 @@ pub(crate) fn new(request: CryptoRequest::CryptoRequest, response: Option<Crypto
 
 pub(crate) fn from_request(request: CryptoRequest::CryptoRequest) -> CryptoClient {
     return new(request, None);
+}
+
+pub(crate) async fn status(service: Service::Service) -> Result<(), AuthenticationApiException::AuthenticationApiException> {
+    let mut request = CryptoRequest::new();
+    request.set_service(service.code());
+    request.set_method(String::from("GET"));
+    request.set_path(service.end_point_status());
+
+    let r_response = new(request, None).launch().await;
+    if r_response.is_err() {
+        return Err(r_response.err().unwrap());
+    }
+    
+    let response = r_response.unwrap();
+    if !response.is_success() {
+        let message = String::from_utf8_lossy(&response.body()).to_string();
+        return Err(AuthenticationApiException::new(response.status(), message));
+    }
+    
+    return Ok(());
+}
+
+pub(crate) async fn key(service: Service::Service) -> Result<DtoPubKeyRequest::DtoPubKeyRequest, AuthenticationApiException::AuthenticationApiException> {
+    let mut request = CryptoRequest::new();
+    request.set_service(service.code());
+    request.set_method(String::from("GET"));
+    request.set_path(service.end_point_key());
+
+    let response = new(request, None).launch().await;
+    if response.is_err() {
+        return Err(response.err().unwrap());
+    }
+    
+    let dto = serde_json::from_slice(&response.unwrap().body());
+    if dto.is_err() {
+        return Err(AuthenticationApiException::new(StatusCode::BAD_REQUEST.as_u16(), dto.err().unwrap().to_string()));
+    }
+
+    return Ok(dto.unwrap());
 }
 
 impl CryptoClient {

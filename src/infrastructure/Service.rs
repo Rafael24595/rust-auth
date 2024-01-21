@@ -4,7 +4,7 @@ use reqwest::StatusCode;
 use crate::commons::exception::AuthenticationApiException;
 use crate::domain::Service;
 use crate::domain::{Services,Key};
-use crate::infrastructure::{DtoPubKeyRequest, DtoService, DtoPubKeyResponse};
+use crate::infrastructure::{DtoService, DtoPubKeyResponse};
 use crate::commons::configuration::Configuration;
 
 use crate::infrastructure::CryptoClient;
@@ -61,8 +61,6 @@ pub(crate) async fn subscribe(code: String, dto: DtoService::DtoService) -> Resu
     Services::insert_service(service);
 
     let token = Configuration::instance().crypto.sign(code);
-    //TODO: Remove after testing.
-    //let result = Configuration::instance().crypto.verify(token.clone().unwrap());
 
     if token.is_err() {
         return Err(token.err().unwrap());
@@ -75,21 +73,11 @@ pub(crate) async fn status(service: String) -> Result<(), AuthenticationApiExcep
     let o_service = Services::find(service.as_str());
     if o_service.is_some() {
         let service_data = o_service.unwrap();
-        let url = service_data.uri() + &service_data.end_point_status();
-        let response = reqwest::get(url).await;
+        let response = CryptoClient::status(service_data).await;
 
         if response.is_err() {
-            let message = response.err().unwrap().to_string();
-            return Err(AuthenticationApiException::new(StatusCode::BAD_REQUEST.as_u16(), message));
+            return Err(response.err().unwrap());
         }
-
-        let response_data = response.unwrap();
-        let status = response_data.status();
-        
-        if !status.is_success() {
-            let text = response_data.text().await.unwrap_or_default();
-            return Err(AuthenticationApiException::new(status.as_u16(), text));
-        } 
 
         return Ok(());
     }
@@ -105,33 +93,16 @@ pub(crate) async fn key(service: String) -> Result<DtoPubKeyResponse::DtoPubKeyR
             return Ok(service_data.key().unwrap().as_dto());
         }
         
-        let url = service_data.uri() + &service_data.end_point_key();
-        let response = reqwest::get(url).await;
-
+        let response = CryptoClient::key(service_data.clone()).await;
         if response.is_err() {
-            let message = response.err().unwrap().to_string();
-            return Err(AuthenticationApiException::new(StatusCode::BAD_REQUEST.as_u16(), message));
+            return Err(response.err().unwrap());
         }
-
-        let response_data = response.unwrap();
-        let status = response_data.status();
+    
+        let key = Key::from_dto(response.unwrap());
+        service_data.update_key(key.clone());
+        Services::update(service_data);
         
-        if !status.is_success() {
-            let message = response_data.text().await.unwrap_or_default();
-            return Err(AuthenticationApiException::new(status.as_u16(), message));
-        }
-
-        let r_dto_key: Result<DtoPubKeyRequest::DtoPubKeyRequest, reqwest::Error> = response_data.json().await;
-
-        if r_dto_key.is_ok() {
-            let key = Key::from_dto(r_dto_key.unwrap());
-            service_data.update_key(key.clone());
-            Services::update(service_data);
-            return Ok(key.as_dto());
-        }
-
-        let message = r_dto_key.err().unwrap().to_string();
-        return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), message));
+        return Ok(key.as_dto());
     }
 
     return Err(AuthenticationApiException::new(StatusCode::BAD_REQUEST.as_u16(), String::from("Service not defined.")));

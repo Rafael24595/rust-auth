@@ -20,6 +20,10 @@ pub(crate) fn new() -> CryptoResponse {
 
 impl CryptoResponse {
     
+    pub fn is_success(&self) -> bool {
+        return 300 > self.status && self.status >= 200
+    }
+
     pub fn status(&self) -> u16 {
         return self.status;
     }
