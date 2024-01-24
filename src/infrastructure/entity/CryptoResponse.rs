@@ -46,7 +46,7 @@ impl CryptoResponse {
         hash_raw.update(&self.body.clone());
         let result = hash_raw.finalize_fixed().to_vec();
         let hash_64 = general_purpose::STANDARD.encode(result);
-        self.set_header_parameter_tuple(Configuration::HEADER_INTEGRITY_NAME.to_string(), hash_64);
+        self.set_header_parameter_tuple(Configuration::HEADER_INTEGRITY_NAME.to_string(), String::from("SHA256;") + &hash_64);
     }
 
     pub fn set_status (&mut self, status: u16) {

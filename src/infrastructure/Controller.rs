@@ -29,6 +29,7 @@ pub fn route(router: Router) -> Router {
 
         .route("/nodekey", get(nodekey))
         .route("/:service/subscribe", post(subscribe))
+        .route_layer(middleware::from_fn(Handler::client_tracer_handler))
 }
 
 async fn nodekey() -> Result<(StatusCode, Json<DtoPubKeyResponse::DtoPubKeyResponse>), (StatusCode, String)> {
