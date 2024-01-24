@@ -1,9 +1,10 @@
 use base64::{Engine as _, engine::general_purpose};
 use reqwest::StatusCode;
 
+use crate::commons::crypto::modules::asymmetric::AsymmetricPublic;
 use crate::commons::exception::AuthenticationApiException;
 use crate::domain::Service;
-use crate::domain::{Services,Key};
+use crate::domain::Services;
 use crate::infrastructure::{DtoService, DtoPubKeyResponse};
 use crate::commons::configuration::Configuration;
 
@@ -12,18 +13,7 @@ use crate::infrastructure::entity::{CryptoRequest, CryptoResponse};
 
 pub(crate) async fn nodekey() -> Result<DtoPubKeyResponse::DtoPubKeyResponse, AuthenticationApiException::AuthenticationApiException> {
     let crypto = Configuration::instance().crypto;
-
-    let key = crypto.read_public();
-    if key.is_err() {
-        return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), String::from("Could not read public key.")));
-    }
-
-    let dto = DtoPubKeyResponse::new(
-        key.unwrap(), 
-        crypto.module(), 
-        crypto.format(), 
-        crypto.pass_phrase());
-    return Ok(dto);
+    return Ok(crypto.read_public());
 }
 
 pub(crate) async fn subscribe(code: String, dto: DtoService::DtoService) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
@@ -41,7 +31,7 @@ pub(crate) async fn subscribe(code: String, dto: DtoService::DtoService) -> Resu
 
     let crypto = Configuration::instance().crypto;
     let encrypted_message = general_purpose::STANDARD.decode(dto.pass_key).unwrap();
-    let r_vec_uuid = crypto.decrypt_message(&encrypted_message);
+    let r_vec_uuid = crypto.asymmetric_key_pair().decrypt_message(&encrypted_message);
     if r_vec_uuid.is_err() {
         return Err(r_vec_uuid.err().unwrap());
     }
@@ -60,7 +50,7 @@ pub(crate) async fn subscribe(code: String, dto: DtoService::DtoService) -> Resu
     let service = Service::new(code.clone(), dto.host, dto.end_point_status, dto.end_point_key);
     Services::insert_service(service);
 
-    let token = Configuration::instance().crypto.sign(code);
+    let token = Configuration::instance().crypto.asymmetric_key_pair().sign(code);
 
     if token.is_err() {
         return Err(token.err().unwrap());
@@ -98,7 +88,7 @@ pub(crate) async fn key(service: String) -> Result<DtoPubKeyResponse::DtoPubKeyR
             return Err(response.err().unwrap());
         }
     
-        let key = Key::from_dto(response.unwrap());
+        let key = AsymmetricPublic::from_dto(response.unwrap());
         service_data.update_key(key.clone());
         Services::update(service_data);
         

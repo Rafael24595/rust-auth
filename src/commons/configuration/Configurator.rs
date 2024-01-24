@@ -1,5 +1,7 @@
 use dotenv::dotenv;
 
+use crate::commons::crypto::modules::asymmetric::{AsymmetricKeys, AsymmetricPrivate, AsymmetricPublic, Utils};
+use crate::commons::crypto::modules::symmetric::SymetricKeys;
 use crate::commons::crypto::CryptoConfiguration;
 use crate::commons::exception::AuthenticationAppException;
 use crate::domain::{Services, PassToken};
@@ -23,32 +25,14 @@ pub(crate) fn initialize() -> Result<(), AuthenticationAppException::Authenticat
 fn initialize_configuration() -> Result<Configuration::Configuration, AuthenticationAppException::AuthenticationAppException> {
     let self_owner = std::env::var("SELF_OWNER");
 
-    let pubkey_name = std::env::var("KEY_PUBKEY_NAME");
-    let prikey_name = std::env::var("KEY_PRIKEY_NAME");
-    let module = std::env::var("KEY_TYPE");
-    let format = std::env::var("KEY_FORMAT");
-    let pass_phrase = std::env::var("KEY_PASSPHRASE");
-    let s_expires_range = std::env::var("EXPIRES_RANGE");
-
-    if pubkey_name.is_err() || prikey_name.is_err() {
-        return Err(AuthenticationAppException::new(String::from("Incorrect number of arguments.")));
-    }
-
-    let r_expires_range = s_expires_range.unwrap_or(String::from("900000"));
-
+    let asymmetric = build_asymmetric_data()?;
+    let symmetric = build_symmetric_data()?;
+    
     let crypto = CryptoConfiguration::new(
-        pubkey_name.unwrap(),
-        prikey_name.unwrap(),
-        module.unwrap(),
-        format.unwrap(),
-        pass_phrase.unwrap_or_default(),
-        r_expires_range.parse().unwrap()
+        asymmetric,
+        symmetric,
     );
 
-    let result = crypto.evalue();
-    if result.is_err() {
-        return Err(result.err().unwrap());
-    }
 
     let conf = Configuration::new(self_owner.ok(), crypto);
     
@@ -59,6 +43,78 @@ fn initialize_configuration() -> Result<Configuration::Configuration, Authentica
     println!("Service token created: {}", token.uuid());
 
     return Ok(Configuration::instance());
+}
+
+fn build_asymmetric_data() -> Result<AsymmetricKeys::AsymmetricKeys, AuthenticationAppException::AuthenticationAppException> {
+    let pubkey_name = std::env::var("KEY_PUBKEY_NAME");
+    let prikey_name = std::env::var("KEY_PRIKEY_NAME");
+    let module = std::env::var("KEY_TYPE").unwrap_or_default();
+    let format = std::env::var("KEY_FORMAT").unwrap_or_default();
+    let pass_phrase = std::env::var("KEY_PASSPHRASE").unwrap_or_default();
+    let s_expires_range = std::env::var("EXPIRES_RANGE");
+
+    if pubkey_name.is_err() || prikey_name.is_err() {
+        return Err(AuthenticationAppException::new(String::from("Incorrect number of arguments.")));
+    }
+
+    let r_expires_range = s_expires_range.unwrap_or(String::from("900000"));
+
+    let priv_key = Utils::read_key(prikey_name.unwrap());
+    if priv_key.is_err() {
+        return Err(AuthenticationAppException::new(priv_key.err().unwrap().to_string()));
+    }
+    let prikey = AsymmetricPrivate::new(
+        priv_key.unwrap(),
+        module.clone(),
+        format.clone(),
+        pass_phrase.clone(),
+        r_expires_range.parse().unwrap()
+    );
+
+    let publ_key = Utils::read_key(pubkey_name.unwrap());
+    if publ_key.is_err() {
+        return Err(AuthenticationAppException::new(publ_key.err().unwrap().to_string()));
+    }
+    let pubkey = AsymmetricPublic::new(
+        publ_key.unwrap(),
+        module.clone(),
+        format.clone(),
+        pass_phrase.clone(),
+        r_expires_range.parse().unwrap(),
+        u128::MAX
+    );
+
+    let asymmetric = AsymmetricKeys::new(
+        pubkey,
+        prikey
+    );
+
+    let _ = asymmetric.evalue()?;
+
+    return Ok(asymmetric);
+}
+
+fn build_symmetric_data() -> Result<SymetricKeys::SymetricKeys, AuthenticationAppException::AuthenticationAppException> {
+    let module = std::env::var("SYMM_KEY_TYPE");
+    let format = std::env::var("SYMM_KEY_FORMAT");
+    let s_expires_range = std::env::var("SYMM_EXPIRES");
+
+    let r_expires_range = s_expires_range
+        .unwrap_or(String::from("1800000"))
+        .parse::<u128>()
+        .unwrap_or(1800000);
+
+    let mut symmetric = SymetricKeys::new(
+        module.unwrap(),
+        format.unwrap(),
+        r_expires_range,
+    )?;
+
+    let key = symmetric.generate_new()?;
+
+    let _ = key.evalue()?;
+
+    return Ok(symmetric);
 }
 
 pub(crate) fn initialize_services() {

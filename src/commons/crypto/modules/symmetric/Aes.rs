@@ -3,24 +3,54 @@ use base64::{engine::general_purpose, Engine};
 use rand::Rng;
 use reqwest::StatusCode;
 
-use crate::commons::exception::AuthenticationApiException;
+use crate::commons::exception::{AuthenticationApiException, AuthenticationAppException};
 
-use super::SymmetricManager::SymmetricManager;
+use crate::commons::crypto::modules::symmetric::{AesBytes, SymmetricManager::SymmetricManager};
+use crate::commons::crypto::modules::symmetric::SymetricKey;
 
 pub const MODULE_CODE: &str = "AES";
 
 #[derive(Clone)]
 pub struct Aes {
     key: Vec<u8>,
-    bytes: usize
+    bytes: usize,
 }
 
-pub(crate) fn new(bytes: usize) -> Result<impl SymmetricManager, AuthenticationApiException::AuthenticationApiException> {
-    if bytes != 128 && bytes != 192 && bytes != 256 {
-        return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), String::from("Bytes value must be 128, 192 or 256")));
+pub(crate) fn new(bytes: AesBytes::AesBytes) -> Result<impl SymmetricManager, AuthenticationAppException::AuthenticationAppException> {    
+    let key = generate_key(bytes.clone());
+    if key.is_err() {
+        return Err(key.err().unwrap());
     }
-    
-    let length = calculate_key_length(bytes);
+
+    let aes = Aes {
+        key: key.unwrap(),
+        bytes: bytes.as_usize(),
+    };
+
+    return Ok(aes);
+}
+
+pub(crate) fn from_symmetric(symmetric: SymetricKey::SymetricKey) -> Result<impl SymmetricManager, AuthenticationApiException::AuthenticationApiException> {    
+    let size = symmetric.format().parse::<usize>();
+    if size.is_err() {
+        return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), size.err().unwrap().to_string()));
+    }
+
+    let bytes = AesBytes::from_usize(size.unwrap());
+    if bytes.is_err() {
+        return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), bytes.err().unwrap().to_string()));
+    }
+
+    let aes = Aes {
+        key: symmetric.key(),
+        bytes: bytes.unwrap().as_usize(),
+    };
+
+    return Ok(aes);
+}
+
+pub(crate) fn generate_key(bytes: AesBytes::AesBytes) -> Result<Vec<u8>, AuthenticationAppException::AuthenticationAppException> {    
+    let length = calculate_key_length(bytes.as_usize());
     if length.is_err() {
         return Err(length.err().unwrap());
     }
@@ -29,21 +59,16 @@ pub(crate) fn new(bytes: usize) -> Result<impl SymmetricManager, AuthenticationA
         .map(|_| rand::thread_rng().gen())
         .collect();
 
-    let aes = Aes {
-        key,
-        bytes
-    };
-
-    return Ok(aes);
+    return Ok(key);
 }
 
-fn calculate_key_length(aes_bytes: usize) -> Result<usize, AuthenticationApiException::AuthenticationApiException> {
+fn calculate_key_length(aes_bytes: usize) -> Result<usize, AuthenticationAppException::AuthenticationAppException> {
     let key_size = match aes_bytes {
         128 => 16,
         192 => 24,
         256 => 32,
         _ => {
-            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), String::from("AES Bytes value must be 128, 192 or 256")));
+            return Err(AuthenticationAppException::new(String::from("AES Bytes value must be 128, 192 or 256")));
         }
     };
     return Ok(key_size);
@@ -89,13 +114,13 @@ impl SymmetricManager for Aes {
             let cloned_chunk = self.fix_chunk(chunk);
             let mut array = *GenericArray::from_slice(&cloned_chunk);
             cipher.generic_decrypt_block(&mut array);
-            let slice: &[u8] = array.as_slice();
-            let readable: String = String::from_utf8_lossy(slice).into();
+            let slice = self.clean_chunk(array.as_slice());
+            let readable: String = String::from_utf8_lossy(&slice).into();
             buffer.push(readable.to_string());
         }
 
-        let b64 = buffer.join("");
-        return Ok(b64);
+        let output = buffer.join("");
+        return Ok(output);
     }
 
 }
@@ -138,6 +163,19 @@ impl Aes {
         let mut array = [0u8; 16];
         array[..chunk.len()].copy_from_slice(chunk);
         return array;
+    }
+
+    fn clean_chunk(&self, chunk: &[u8]) -> Vec<u8> {
+        let mut chunc_copy = chunk.to_vec();
+        let position = chunc_copy.iter().rev().position(|&byte| byte != b'\0');
+
+        if let Some(index) = position {
+            chunc_copy.truncate(chunk.len() - index);
+        } else {
+            chunc_copy.clear();
+        }
+
+        return chunc_copy;
     }
 
 }

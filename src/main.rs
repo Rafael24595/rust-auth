@@ -25,11 +25,19 @@ mod commons {
         pub mod Payload;
         pub mod modules {
             pub mod symmetric {
+                pub mod Utils;
                 pub mod SymmetricManager;
+                pub mod SymetricKeys;
+                pub mod SymetricKey;
+                pub mod AesBytes;
                 pub mod Aes;
             }
             pub mod asymmetric {
+                pub mod Utils;
                 pub mod AsymmetricManager;
+                pub mod AsymmetricKeys;
+                pub mod AsymmetricPrivate;
+                pub mod AsymmetricPublic;
                 pub mod Rsa;
             }
         }
@@ -43,7 +51,6 @@ mod commons {
 mod domain {
     pub mod Services;
     pub mod Service;
-    pub mod Key;
     pub mod PassToken;
 }
 

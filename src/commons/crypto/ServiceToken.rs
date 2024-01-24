@@ -1,9 +1,13 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use base64::{engine::general_purpose, Engine};
 use reqwest::StatusCode;
 
 use crate::commons::exception::AuthenticationApiException;
 
 use super::Payload;
+
+const EXPIRATION_MARGIN: u128 = 240000;
 
 const SEPARATOR: &str = ";";
 
@@ -96,6 +100,19 @@ impl ServiceToken {
 
     pub fn set_hash(&mut self, hash: Vec<u8>) {
         self.hash = Some(hash);
+    }
+
+    pub fn is_alive(&self) -> Result<(), (bool, AuthenticationApiException::AuthenticationApiException)> {
+        let current_system_time = SystemTime::now();
+        let duration_since_epoch = current_system_time.duration_since(UNIX_EPOCH);
+        let timestamp = duration_since_epoch.unwrap_or_default().as_millis();
+
+        if timestamp > self.payload.expires {
+            let refresh = (timestamp - self.payload.expires) < EXPIRATION_MARGIN;
+            return Err((refresh, AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), String::from("Token has expired."))));
+        }
+
+        return Ok(());
     }
 
 }

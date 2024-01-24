@@ -5,16 +5,16 @@ pub struct DtoPubKeyRequest {
     pub key: String,
     pub module: String,
     pub format: String,
-    pub passphrase: String,
+    pub pass_phrase: String,
     pub expires: u128
 }
 
-pub(crate) fn new(key: String, module: String, format: String, passphrase: String, expires: u128) -> DtoPubKeyRequest {
+pub(crate) fn new(key: String, module: String, format: String, pass_phrase: String, expires: u128) -> DtoPubKeyRequest {
     return DtoPubKeyRequest {
         key,
         module,
         format,
-        passphrase,
+        pass_phrase,
         expires
     };
 }
