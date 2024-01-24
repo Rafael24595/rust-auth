@@ -1,19 +1,26 @@
 use dotenv::dotenv;
 
 use crate::commons::crypto::CryptoConfiguration;
+use crate::commons::exception::AuthenticationAppException;
 use crate::domain::{Services, PassToken};
 
 use crate::commons::configuration::Configuration::{self, create_service_token};
 
-pub(crate) fn initialize() {
+pub(crate) fn initialize() -> Result<(), AuthenticationAppException::AuthenticationAppException> {
     dotenv().ok();
 
-    initialize_configuration();
+    let result = initialize_configuration();
+    if result.is_err() {
+        return Err(result.err().unwrap());
+    }
+    
     initialize_services();
     initialize_pass_tokens();
+
+    return Ok(());
 }
 
-fn initialize_configuration() -> Configuration::Configuration {
+fn initialize_configuration() -> Result<Configuration::Configuration, AuthenticationAppException::AuthenticationAppException> {
     let self_owner = std::env::var("SELF_OWNER");
 
     let pubkey_name = std::env::var("KEY_PUBKEY_NAME");
@@ -24,10 +31,8 @@ fn initialize_configuration() -> Configuration::Configuration {
     let s_expires_range = std::env::var("EXPIRES_RANGE");
 
     if pubkey_name.is_err() || prikey_name.is_err() {
-        //TODO: Exception.
+        return Err(AuthenticationAppException::new(String::from("Incorrect number of arguments.")));
     }
-
-    //TODO: Valide keys.
 
     let r_expires_range = s_expires_range.unwrap_or(String::from("900000"));
 
@@ -40,6 +45,11 @@ fn initialize_configuration() -> Configuration::Configuration {
         r_expires_range.parse().unwrap()
     );
 
+    let result = crypto.evalue();
+    if result.is_err() {
+        return Err(result.err().unwrap());
+    }
+
     let conf = Configuration::new(self_owner.ok(), crypto);
     
     Configuration::initialize(conf.clone());
@@ -48,7 +58,7 @@ fn initialize_configuration() -> Configuration::Configuration {
 
     println!("Service token created: {}", token.uuid());
 
-    return Configuration::instance();
+    return Ok(Configuration::instance());
 }
 
 pub(crate) fn initialize_services() {

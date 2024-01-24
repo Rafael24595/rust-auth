@@ -24,11 +24,18 @@ mod commons {
         pub mod ServiceToken;
         pub mod Payload;
         pub mod modules {
-            pub mod CryptoManager;
-            pub mod Rsa;
+            pub mod symetric {
+                pub mod SymetricManager;
+                pub mod Aes;
+            }
+            pub mod asymetric {
+                pub mod AsymetricManager;
+                pub mod Rsa;
+            }
         }
     }
     pub mod exception {
+        pub mod AuthenticationAppException;
         pub mod AuthenticationApiException;
     }
 }
@@ -40,8 +47,10 @@ mod domain {
     pub mod PassToken;
 }
 
+use std::net::SocketAddr;
+
 use axum::Router;
-use commons::configuration::Configurator;
+use commons::{configuration::Configurator, crypto::modules::symetric::{Aes, SymetricManager::SymetricManager}};
 use infrastructure::Controller;
 
 #[tokio::main]
@@ -49,10 +58,14 @@ async fn main() {
     // initialize tracing
     tracing_subscriber::fmt::init();
 
-    Configurator::initialize();
+    let result = Configurator::initialize();
+    if result.is_err() {
+        println!("Configuration error: {}", result.err().unwrap().message());
+        return;
+    }
 
-    let mut app = Router::new();
-    app = Controller::route(app);
+    let router = Router::new();
+    let app = Controller::route(router).into_make_service_with_connect_info::<SocketAddr>();
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();

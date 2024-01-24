@@ -3,9 +3,9 @@ use std::io::Read;
 use std::time::{SystemTime, UNIX_EPOCH};
 use reqwest::StatusCode;
 
-use crate::commons::crypto::modules::{CryptoManager, Rsa};
-use crate::commons::crypto::modules::CryptoManager::CryptoManager as _;
-use crate::commons::exception::AuthenticationApiException;
+use crate::commons::crypto::modules::asymetric::{AsymetricManager, Rsa};
+use crate::commons::crypto::modules::asymetric::AsymetricManager::AsymetricManager as _;
+use crate::commons::exception::{AuthenticationApiException, AuthenticationAppException};
 
 use super::ServiceToken;
 
@@ -32,7 +32,7 @@ pub(crate) fn new(pubkey_name: String, prikey_name: String, module: String, form
     }
 }
 
-pub(crate) fn find_manager(module: String, format: String, pass_phrase: String) -> Result<impl CryptoManager::CryptoManager, String> {
+pub(crate) fn find_manager(module: String, format: String, pass_phrase: String) -> Result<impl AsymetricManager::AsymetricManager, String> {
     match module.as_str() {
         Rsa::MODULE_CODE => {
             return Ok(Rsa::new(format.clone(), pass_phrase.clone()));
@@ -44,6 +44,26 @@ pub(crate) fn find_manager(module: String, format: String, pass_phrase: String) 
 }
 
 impl CryptoConfiguration {
+
+    pub fn evalue(&self) -> Result<(), AuthenticationAppException::AuthenticationAppException> {
+        let message = "message".as_bytes();
+
+        let enc = self.encrypt_message(message);
+        if enc.is_err() {
+            return Err(AuthenticationAppException::new(enc.err().unwrap().to_string()));
+        }
+
+        let dec = self.decrypt_message(&enc.unwrap());
+        if dec.is_err() {
+            return Err(AuthenticationAppException::new(dec.err().unwrap().to_string()));
+        }
+
+        if dec.unwrap() != message {
+            return Err(AuthenticationAppException::new(String::from("Decoded data does not match with encoded message content")));
+        }
+
+        return Ok(());
+    }
 
     pub fn module(&self) -> String {
         return self.module.clone();
@@ -57,7 +77,7 @@ impl CryptoConfiguration {
         return self.pass_phrase.clone();
     }
 
-    fn find_manager(&self) -> Result<impl CryptoManager::CryptoManager, String> {
+    fn find_manager(&self) -> Result<impl AsymetricManager::AsymetricManager, String> {
         return find_manager(self.module.clone(), self.format.clone(), self.pass_phrase.clone());
     }
 
