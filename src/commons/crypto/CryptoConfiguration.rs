@@ -3,8 +3,8 @@ use std::io::Read;
 use std::time::{SystemTime, UNIX_EPOCH};
 use reqwest::StatusCode;
 
-use crate::commons::crypto::modules::asymetric::{AsymetricManager, Rsa};
-use crate::commons::crypto::modules::asymetric::AsymetricManager::AsymetricManager as _;
+use crate::commons::crypto::modules::asymmetric::{AsymmetricManager, Rsa};
+use crate::commons::crypto::modules::asymmetric::AsymmetricManager::AsymmetricManager as _;
 use crate::commons::exception::{AuthenticationApiException, AuthenticationAppException};
 
 use super::ServiceToken;
@@ -32,7 +32,7 @@ pub(crate) fn new(pubkey_name: String, prikey_name: String, module: String, form
     }
 }
 
-pub(crate) fn find_manager(module: String, format: String, pass_phrase: String) -> Result<impl AsymetricManager::AsymetricManager, String> {
+pub(crate) fn find_manager(module: String, format: String, pass_phrase: String) -> Result<impl AsymmetricManager::AsymmetricManager, String> {
     match module.as_str() {
         Rsa::MODULE_CODE => {
             return Ok(Rsa::new(format.clone(), pass_phrase.clone()));
@@ -77,7 +77,7 @@ impl CryptoConfiguration {
         return self.pass_phrase.clone();
     }
 
-    fn find_manager(&self) -> Result<impl AsymetricManager::AsymetricManager, String> {
+    fn find_manager(&self) -> Result<impl AsymmetricManager::AsymmetricManager, String> {
         return find_manager(self.module.clone(), self.format.clone(), self.pass_phrase.clone());
     }
 

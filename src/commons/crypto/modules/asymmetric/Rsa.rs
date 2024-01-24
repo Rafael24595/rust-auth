@@ -8,7 +8,7 @@ use rsa::signature::{Keypair, RandomizedSigner, SignatureEncoding, Verifier};
 use rsa::sha2::Sha256;
 
 use crate::commons::crypto::{Payload, ServiceToken};
-use crate::commons::{crypto::modules::CryptoManager, exception::AuthenticationApiException};
+use crate::commons::{crypto::modules::asymmetric::AsymmetricManager, exception::AuthenticationApiException};
 
 pub const MODULE_CODE: &str = "RSA";
 
@@ -23,7 +23,7 @@ pub struct Rsa {
     pass_phrase: String
 }
 
-pub(crate) fn new(format: String, pass_phrase: String) -> impl CryptoManager::CryptoManager {
+pub(crate) fn new(format: String, pass_phrase: String) -> impl AsymmetricManager::AsymmetricManager {
     let format_fragments: Vec<&str> = format.split("&").collect();
     let format_value = format_fragments.first().unwrap().to_string();
     let is_pem = format_fragments.last().unwrap().to_string().eq_ignore_ascii_case(PEM);
@@ -35,7 +35,7 @@ pub(crate) fn new(format: String, pass_phrase: String) -> impl CryptoManager::Cr
     }
 }
 
-impl CryptoManager::CryptoManager for Rsa {
+impl AsymmetricManager::AsymmetricManager for Rsa {
     
     fn encrypt(&self, publ_string: String, message: &[u8]) -> Result<Vec<u8>, AuthenticationApiException::AuthenticationApiException> {
         let publ_key = self.public_key(publ_string);

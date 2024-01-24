@@ -24,12 +24,12 @@ mod commons {
         pub mod ServiceToken;
         pub mod Payload;
         pub mod modules {
-            pub mod symetric {
-                pub mod SymetricManager;
+            pub mod symmetric {
+                pub mod SymmetricManager;
                 pub mod Aes;
             }
-            pub mod asymetric {
-                pub mod AsymetricManager;
+            pub mod asymmetric {
+                pub mod AsymmetricManager;
                 pub mod Rsa;
             }
         }
@@ -50,7 +50,7 @@ mod domain {
 use std::net::SocketAddr;
 
 use axum::Router;
-use commons::{configuration::Configurator, crypto::modules::symetric::{Aes, SymetricManager::SymetricManager}};
+use commons::configuration::Configurator;
 use infrastructure::Controller;
 
 #[tokio::main]
