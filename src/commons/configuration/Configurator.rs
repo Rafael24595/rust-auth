@@ -16,13 +16,13 @@ pub(crate) fn initialize() -> Result<(), AuthenticationAppException::Authenticat
         return Err(result.err().unwrap());
     }
     
-    initialize_services();
+    initialize_services(result.unwrap());
     initialize_pass_tokens();
 
     return Ok(());
 }
 
-fn initialize_configuration() -> Result<Configuration::Configuration, AuthenticationAppException::AuthenticationAppException> {
+fn initialize_configuration() -> Result<PassToken::PassToken, AuthenticationAppException::AuthenticationAppException> {
     let self_owner = std::env::var("SELF_OWNER");
 
     let asymmetric = build_asymmetric_data()?;
@@ -42,7 +42,7 @@ fn initialize_configuration() -> Result<Configuration::Configuration, Authentica
 
     println!("Service token created: {}", token.uuid());
 
-    return Ok(Configuration::instance());
+    return Ok(token);
 }
 
 fn build_asymmetric_data() -> Result<AsymmetricKeys::AsymmetricKeys, AuthenticationAppException::AuthenticationAppException> {
@@ -117,14 +117,14 @@ fn build_symmetric_data() -> Result<SymetricKeys::SymetricKeys, AuthenticationAp
     return Ok(symmetric);
 }
 
-pub(crate) fn initialize_services() {
+pub(crate) fn initialize_services(token: PassToken::PassToken) {
     let services = find_services();
     for service in services {
         let uri = std::env::var(service.to_uppercase() + "_URI");
         let end_point_status = std::env::var(service.to_uppercase() + "_STATUS");
         let end_point_key = std::env::var(service.to_uppercase() + "_KEY");
         if uri.is_ok() && end_point_status.is_ok() && end_point_key.is_ok() {
-            Services::insert(service, uri.unwrap(), end_point_status.unwrap(), end_point_key.unwrap());
+            Services::insert(service, uri.unwrap(), token.uuid(), end_point_status.unwrap(), end_point_key.unwrap());
         } else {
             //TODO: Log.
         }

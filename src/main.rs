@@ -4,6 +4,8 @@ mod infrastructure {
     pub mod Service;
     pub mod CryptoClient;
     pub mod DtoPubKeyRequest;
+    pub mod DtoSymetricKey;
+    pub mod DtoSuscribePayload;
     pub mod DtoService;
     pub mod DtoPubKeyResponse;
     pub mod entity {

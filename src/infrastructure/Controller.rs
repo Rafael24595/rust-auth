@@ -8,8 +8,9 @@ use axum::{
 
 use crate::infrastructure::{
     entity::CryptoRequest,
-    Handler, Service, 
-    DtoService, DtoPubKeyResponse};
+    Handler, Service, DtoPubKeyResponse};
+
+use super::DtoSuscribePayload;
 
 pub fn route(router: Router) -> Router {
     return router    
@@ -28,7 +29,8 @@ pub fn route(router: Router) -> Router {
         .route_layer(middleware::from_fn(Handler::auth_handler))
 
         .route("/nodekey", get(nodekey))
-        .route("/:service/subscribe", post(subscribe))
+        .route("/subscribe", post(subscribe))
+        .route("/renove", post(renove))
         .route_layer(middleware::from_fn(Handler::client_tracer_handler))
 }
 
@@ -47,8 +49,22 @@ async fn nodekey() -> Result<(StatusCode, Json<DtoPubKeyResponse::DtoPubKeyRespo
     return Err((StatusCode::NOT_FOUND, "Not found".to_string()));
 }
 
-async fn subscribe(Path(service): Path<String>, Json(dto): Json<DtoService::DtoService>) -> Result<(StatusCode, String), (StatusCode, String)> {
-    let status = Service::subscribe(service, dto).await;
+async fn subscribe(Json(dto): Json<DtoSuscribePayload::DtoSuscribePayload>) -> Result<(StatusCode, String), (StatusCode, String)> {
+    let status = Service::subscribe(dto).await;
+
+    if status.is_ok() {
+        return Ok((StatusCode::ACCEPTED, status.unwrap()));    
+    }
+    
+    if status.is_err() {
+        let error = status.err().unwrap();
+        return Err((StatusCode::from_u16(error.status()).unwrap_or_default(), error.message()));   
+    }
+    return Err((StatusCode::NOT_FOUND, "Not found".to_string()));
+}
+
+async fn renove(Json(dto): Json<DtoSuscribePayload::DtoSuscribePayload>) -> Result<(StatusCode, String), (StatusCode, String)> {
+    let status = Service::renove(dto).await;
 
     if status.is_ok() {
         return Ok((StatusCode::ACCEPTED, status.unwrap()));    

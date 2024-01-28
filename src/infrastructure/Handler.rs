@@ -1,4 +1,6 @@
-use axum::{http::{HeaderMap, StatusCode, HeaderValue}, extract::Request, middleware::Next, response::Response};
+use std::net::SocketAddr;
+
+use axum::{http::{HeaderMap, StatusCode, HeaderValue}, extract::{ConnectInfo, Request}, middleware::Next, response::Response};
 
 use crate::commons::configuration::Configuration;
 
@@ -8,7 +10,7 @@ pub(crate) async fn auth_handler(headers: HeaderMap, request: Request, next: Nex
         return Err(StatusCode::UNAUTHORIZED);
     }
     let token = o_token.unwrap().to_str().unwrap().to_string();
-    let config = Configuration::instance().crypto;
+    let config = Configuration::instance().crypto.asymmetric_key_pair();
     let r_validation = config.verify(token);
     if r_validation.is_err() {
         return Err(StatusCode::UNAUTHORIZED);
@@ -28,4 +30,16 @@ pub(crate) async fn auth_handler(headers: HeaderMap, request: Request, next: Nex
     }
 
     return Ok(response);
+}
+
+pub(crate) async fn client_tracer_handler(ConnectInfo(addr): ConnectInfo<SocketAddr>, headers: HeaderMap, request: Request, next: Next) -> Result<Response, StatusCode> {
+    let ip = addr.ip().to_string();
+    let port = addr.port();
+    let mut ipv = String::from("ipv4");
+    if addr.is_ipv6() {
+        ipv = String::from("ipv6");
+    }
+    let pass_token = headers.get(String::from(Configuration::COOKIE_NAME));
+
+    return Ok(next.run(request).await);
 }

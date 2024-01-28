@@ -1,42 +1,63 @@
-use crate::commons::crypto::modules::{asymmetric::AsymmetricPublic, symmetric::SymetricKey};
+use crate::{commons::{crypto::modules::{asymmetric::AsymmetricPublic, symmetric::SymetricKey}, exception::AuthenticationApiException}, infrastructure::DtoService};
 
 #[derive(Clone)]
 pub struct Service {
-    code: &'static str,
-    uri: &'static str,
-    end_point_status: &'static str,
-    end_point_key: &'static str,
+    code: String,
+    uri: String,
+    subscription_uuid: String,
+    end_point_status: String,
+    end_point_key: String,
     asymmetric: Option<AsymmetricPublic::AsymmetricPublic>,
     symmetric: Option<SymetricKey::SymetricKey>
 }
 
-pub(crate) fn new(code: String, uri: String, end_point_status: String, end_point_key: String) -> Service {
+pub(crate) fn new(code: String, uri: String, subscription_uuid: String, end_point_status: String, end_point_key: String) -> Service {
     Service {
-        code: Box::leak(code.into_boxed_str()),
-        uri: Box::leak(uri.into_boxed_str()),
-        end_point_status: Box::leak(end_point_status.into_boxed_str()),
-        end_point_key: Box::leak(end_point_key.into_boxed_str()),
+        code: code,
+        uri: uri,
+        subscription_uuid: subscription_uuid,
+        end_point_status: end_point_status,
+        end_point_key: end_point_key,
         asymmetric: None,
         symmetric: None
     }
 }
 
+pub(crate) fn from_dto(dto: DtoService::DtoService) -> Result<Service, AuthenticationApiException::AuthenticationApiException> {
+    let symetric = SymetricKey::from_dto(dto.symetric_key)?;
+    let service = Service {
+        code: dto.service,
+        uri: dto.host,
+        subscription_uuid: dto.pass_key,
+        end_point_status: dto.end_point_status,
+        end_point_key: dto.end_point_key,
+        asymmetric: None,
+        symmetric: Some(symetric)
+    };
+
+    return Ok(service);
+}
+
 impl Service {
     
     pub fn code(&self) -> String {
-        return self.code.to_string();
+        return self.code.clone();
     }
 
     pub fn uri(&self) -> String {
-        return self.uri.to_string();
+        return self.uri.clone();
+    }
+
+    pub fn uuid(&self) -> String {
+        return self.uuid().clone();
     }
 
     pub fn end_point_status(&self) -> String {
-        return self.end_point_status.to_string();
+        return self.end_point_status.clone();
     }
 
     pub fn end_point_key(&self) -> String {
-        return self.end_point_key.to_string();
+        return self.end_point_key.clone();
     }
 
     pub fn key(&self) -> Option<AsymmetricPublic::AsymmetricPublic> {

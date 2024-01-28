@@ -1,9 +1,13 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use reqwest::StatusCode;
+
 use crate::commons::crypto::modules::symmetric::Utils;
-use crate::commons::exception::{AuthenticationApiException, AuthenticationAppException};
+use crate::commons::exception::AuthenticationApiException;
 
 use crate::commons::crypto::modules::symmetric::AesBytes;
+use crate::commons::exception::AuthenticationAppException;
+use crate::infrastructure::DtoSymetricKey;
 
 use super::{Aes, SymmetricManager};
 use super::SymmetricManager::SymmetricManager as _;
@@ -42,6 +46,14 @@ pub(crate) fn new(module: String, format: String, expires: u128) -> Result<Symet
 
 pub(crate) fn from(from: SymetricKey) -> Result<SymetricKey, AuthenticationAppException::AuthenticationAppException> {
     return new(from.module, from.format, from.expires);
+}
+
+pub(crate) fn from_dto(dto: DtoSymetricKey::DtoSymetricKey) -> Result<SymetricKey, AuthenticationApiException::AuthenticationApiException> {
+    let result = new(dto.module, dto.format, dto.expires);
+    if result.is_err() {
+        return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), result.err().unwrap().to_string()));
+    }
+    return Ok(result.unwrap());
 }
 
 fn generate_key(module: String, format: String) -> Result<Vec<u8>, AuthenticationAppException::AuthenticationAppException> {
