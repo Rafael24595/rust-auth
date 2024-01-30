@@ -77,10 +77,11 @@ impl CryptoClient {
         if o_service.is_none() {
             return Err(AuthenticationApiException::new(StatusCode::BAD_REQUEST.as_u16(), String::from("Service is not defined.")));
         }
+        let service = o_service.unwrap();
         
         let client = reqwest::Client::new();
         
-        let host = o_service.unwrap().uri();
+        let host = service.uri();
         let uri = host + "/" + &self.request.uri();
         let method = self.request.method();
 
@@ -100,8 +101,12 @@ impl CryptoClient {
 
         if method != "GET" {
             let v_body = self.request.body();
-            let body = String::from_utf8_lossy(&v_body);
-            petition = petition.body(body.to_string());
+            let symmetric = service.symetric_key();
+            if symmetric.is_none() {
+                return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), String::from("Symmetric key not found")));
+            }
+            let encrypted = symmetric.unwrap().encrypt_message(&v_body)?;
+            petition = petition.body(encrypted);
         }
 
         for header in self.request.headers() {
