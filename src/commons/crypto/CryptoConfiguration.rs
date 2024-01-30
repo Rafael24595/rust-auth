@@ -6,15 +6,15 @@ use crate::commons::exception::AuthenticationApiException;
 use crate::infrastructure::{DtoPubKeyResponse, DtoService, DtoSuscribePayload};
 
 use super::modules::asymmetric::AsymmetricKeys;
-use super::modules::symmetric::{SymetricKey, SymetricKeys};
+use super::modules::symmetric::{SymmetricKey, SymmetricKeys};
 
 #[derive(Clone)]
 pub struct CryptoConfiguration {
     asymmetric_key_pair: AsymmetricKeys::AsymmetricKeys,
-    symetric_keys: SymetricKeys::SymetricKeys
+    symetric_keys: SymmetricKeys::SymmetricKeys
 }
 
-pub(crate) fn new(asymmetric_key_pair: AsymmetricKeys::AsymmetricKeys, symetric_keys: SymetricKeys::SymetricKeys) -> CryptoConfiguration {
+pub(crate) fn new(asymmetric_key_pair: AsymmetricKeys::AsymmetricKeys, symetric_keys: SymmetricKeys::SymmetricKeys) -> CryptoConfiguration {
     CryptoConfiguration {
         asymmetric_key_pair: asymmetric_key_pair,
         symetric_keys: symetric_keys
@@ -27,7 +27,7 @@ impl CryptoConfiguration {
         return self.asymmetric_key_pair.clone();
     }
 
-    pub fn symmetric_key(&mut self) -> Result<SymetricKey::SymetricKey, AuthenticationApiException::AuthenticationApiException> {
+    pub fn symmetric_key(&mut self) -> Result<SymmetricKey::SymmetricKey, AuthenticationApiException::AuthenticationApiException> {
         return self.symetric_keys.find();
     }
 

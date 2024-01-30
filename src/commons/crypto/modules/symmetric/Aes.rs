@@ -6,7 +6,7 @@ use reqwest::StatusCode;
 use crate::commons::exception::{AuthenticationApiException, AuthenticationAppException};
 
 use crate::commons::crypto::modules::symmetric::{AesBytes, SymmetricManager::SymmetricManager};
-use crate::commons::crypto::modules::symmetric::SymetricKey;
+use crate::commons::crypto::modules::symmetric::SymmetricKey;
 
 pub const MODULE_CODE: &str = "AES";
 
@@ -30,7 +30,7 @@ pub(crate) fn new(bytes: AesBytes::AesBytes) -> Result<impl SymmetricManager, Au
     return Ok(aes);
 }
 
-pub(crate) fn from_symmetric(symmetric: SymetricKey::SymetricKey) -> Result<impl SymmetricManager, AuthenticationApiException::AuthenticationApiException> {    
+pub(crate) fn from_symmetric(symmetric: SymmetricKey::SymmetricKey) -> Result<impl SymmetricManager, AuthenticationApiException::AuthenticationApiException> {    
     let size = symmetric.format().parse::<usize>();
     if size.is_err() {
         return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), size.err().unwrap().to_string()));

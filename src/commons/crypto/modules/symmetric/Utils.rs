@@ -3,9 +3,9 @@ use reqwest::StatusCode;
 use crate::commons::exception::AuthenticationApiException;
 
 use super::{Aes, SymmetricManager};
-use crate::commons::crypto::modules::symmetric::SymetricKey;
+use crate::commons::crypto::modules::symmetric::SymmetricKey;
 
-pub(crate) fn find_manager(symmetric: SymetricKey::SymetricKey) -> Result<impl SymmetricManager::SymmetricManager, AuthenticationApiException::AuthenticationApiException> {
+pub(crate) fn find_manager(symmetric: SymmetricKey::SymmetricKey) -> Result<impl SymmetricManager::SymmetricManager, AuthenticationApiException::AuthenticationApiException> {
     match symmetric.module().as_str() {
         Aes::MODULE_CODE => {
             let result = Aes::from_symmetric(symmetric);

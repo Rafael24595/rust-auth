@@ -1,4 +1,4 @@
-use crate::{commons::{crypto::modules::{asymmetric::AsymmetricPublic, symmetric::SymetricKey}, exception::AuthenticationApiException}, infrastructure::DtoService};
+use crate::{commons::{crypto::modules::{asymmetric::AsymmetricPublic, symmetric::SymmetricKey}, exception::AuthenticationApiException}, infrastructure::DtoService};
 
 #[derive(Clone)]
 pub struct Service {
@@ -8,7 +8,7 @@ pub struct Service {
     end_point_status: String,
     end_point_key: String,
     asymmetric: Option<AsymmetricPublic::AsymmetricPublic>,
-    symmetric: Option<SymetricKey::SymetricKey>
+    symmetric: Option<SymmetricKey::SymmetricKey>
 }
 
 pub(crate) fn new(code: String, uri: String, subscription_uuid: String, end_point_status: String, end_point_key: String) -> Service {
@@ -24,7 +24,7 @@ pub(crate) fn new(code: String, uri: String, subscription_uuid: String, end_poin
 }
 
 pub(crate) fn from_dto(dto: DtoService::DtoService) -> Result<Service, AuthenticationApiException::AuthenticationApiException> {
-    let symetric = SymetricKey::from_dto(dto.symetric_key)?;
+    let symetric = SymmetricKey::from_dto(dto.symetric_key)?;
     let service = Service {
         code: dto.service,
         uri: dto.host,
@@ -70,6 +70,10 @@ impl Service {
 
     pub fn update_key(&mut self, asymmetric: AsymmetricPublic::AsymmetricPublic) {
         self.asymmetric = Some(asymmetric);
+    }
+
+    pub fn symetric_key(&self) -> Option<SymmetricKey::SymmetricKey> {
+        return self.symmetric.clone();
     }
 
 }

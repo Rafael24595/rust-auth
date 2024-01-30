@@ -13,16 +13,16 @@ use super::{Aes, SymmetricManager};
 use super::SymmetricManager::SymmetricManager as _;
 
 #[derive(Clone)]
-pub struct SymetricKey {
+pub struct SymmetricKey {
     module: String,
     key: Vec<u8>,
     format: String,
     expires: u128,
     timestamp: u128,
-    status: SymetricKeyState
+    status: SymmetricKeyState
 }
 
-pub(crate) fn new(module: String, format: String, expires: u128) -> Result<SymetricKey, AuthenticationAppException::AuthenticationAppException> {
+pub(crate) fn new(module: String, format: String, expires: u128) -> Result<SymmetricKey, AuthenticationAppException::AuthenticationAppException> {
     let key = generate_key(module.clone(), format.clone());
     if key.is_err() {
         return Err(key.err().unwrap());
@@ -32,23 +32,23 @@ pub(crate) fn new(module: String, format: String, expires: u128) -> Result<Symet
     let duration_since_epoch = current_system_time.duration_since(UNIX_EPOCH);
     let timestamp = duration_since_epoch.unwrap_or_default().as_millis();
 
-    let data = SymetricKey {
+    let data = SymmetricKey {
         module: module,
         key: key.unwrap(),
         format: format,
         expires: expires,
         timestamp: timestamp,
-        status: SymetricKeyState::ACTIVE
+        status: SymmetricKeyState::ACTIVE
     };
 
     return Ok(data);
 }
 
-pub(crate) fn from(from: SymetricKey) -> Result<SymetricKey, AuthenticationAppException::AuthenticationAppException> {
+pub(crate) fn from(from: SymmetricKey) -> Result<SymmetricKey, AuthenticationAppException::AuthenticationAppException> {
     return new(from.module, from.format, from.expires);
 }
 
-pub(crate) fn from_dto(dto: DtoSymetricKey::DtoSymetricKey) -> Result<SymetricKey, AuthenticationApiException::AuthenticationApiException> {
+pub(crate) fn from_dto(dto: DtoSymetricKey::DtoSymetricKey) -> Result<SymmetricKey, AuthenticationApiException::AuthenticationApiException> {
     let result = new(dto.module, dto.format, dto.expires);
     if result.is_err() {
         return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), result.err().unwrap().to_string()));
@@ -74,7 +74,7 @@ fn generate_key(module: String, format: String) -> Result<Vec<u8>, Authenticatio
     }
 }
 
-impl SymetricKey {
+impl SymmetricKey {
     
     pub fn evalue(&self) -> Result<(), AuthenticationAppException::AuthenticationAppException> {
         let message = "message".as_bytes();
@@ -112,7 +112,7 @@ impl SymetricKey {
         let current_system_time = SystemTime::now();
         let duration_since_epoch = current_system_time.duration_since(UNIX_EPOCH);
         let timestamp = duration_since_epoch.unwrap_or_default().as_millis();
-        return self.status == SymetricKeyState::ACTIVE && timestamp < self.timestamp + self.expires;
+        return self.status == SymmetricKeyState::ACTIVE && timestamp < self.timestamp + self.expires;
     }
 
     fn find_manager(&self) -> Result<impl SymmetricManager::SymmetricManager, AuthenticationApiException::AuthenticationApiException> {
@@ -132,16 +132,16 @@ impl SymetricKey {
 }
 
 #[derive(Clone, PartialEq)]
-pub(crate) enum SymetricKeyState {
+pub(crate) enum SymmetricKeyState {
     ACTIVE,
     EXPIRED
 }
 
-impl SymetricKeyState {
+impl SymmetricKeyState {
     pub fn to_string(&self) -> &'static str {
         match self {
-            SymetricKeyState::ACTIVE => "ACTIVE",
-            SymetricKeyState::EXPIRED => "EXPIRED"
+            SymmetricKeyState::ACTIVE => "ACTIVE",
+            SymmetricKeyState::EXPIRED => "EXPIRED"
         }
     }
 }

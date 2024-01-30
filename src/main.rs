@@ -29,10 +29,11 @@ mod commons {
             pub mod symmetric {
                 pub mod Utils;
                 pub mod SymmetricManager;
-                pub mod SymetricKeys;
-                pub mod SymetricKey;
+                pub mod SymmetricKeys;
+                pub mod SymmetricKey;
                 pub mod AesBytes;
                 pub mod Aes;
+                pub mod AesGmc;
             }
             pub mod asymmetric {
                 pub mod Utils;
@@ -67,7 +68,7 @@ async fn main() {
     // initialize tracing
     tracing_subscriber::fmt::init();
 
-    let result = Configurator::initialize();
+    let result = Configurator::initialize(); 
     if result.is_err() {
         println!("Configuration error: {}", result.err().unwrap().message());
         return;

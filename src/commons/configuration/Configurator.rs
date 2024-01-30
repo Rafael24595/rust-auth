@@ -1,7 +1,7 @@
 use dotenv::dotenv;
 
 use crate::commons::crypto::modules::asymmetric::{AsymmetricKeys, AsymmetricPrivate, AsymmetricPublic, Utils};
-use crate::commons::crypto::modules::symmetric::SymetricKeys;
+use crate::commons::crypto::modules::symmetric::SymmetricKeys;
 use crate::commons::crypto::CryptoConfiguration;
 use crate::commons::exception::AuthenticationAppException;
 use crate::domain::{Services, PassToken};
@@ -94,7 +94,7 @@ fn build_asymmetric_data() -> Result<AsymmetricKeys::AsymmetricKeys, Authenticat
     return Ok(asymmetric);
 }
 
-fn build_symmetric_data() -> Result<SymetricKeys::SymetricKeys, AuthenticationAppException::AuthenticationAppException> {
+fn build_symmetric_data() -> Result<SymmetricKeys::SymmetricKeys, AuthenticationAppException::AuthenticationAppException> {
     let module = std::env::var("SYMM_KEY_TYPE");
     let format = std::env::var("SYMM_KEY_FORMAT");
     let s_expires_range = std::env::var("SYMM_EXPIRES");
@@ -104,7 +104,7 @@ fn build_symmetric_data() -> Result<SymetricKeys::SymetricKeys, AuthenticationAp
         .parse::<u128>()
         .unwrap_or(1800000);
 
-    let mut symmetric = SymetricKeys::new(
+    let mut symmetric = SymmetricKeys::new(
         module.unwrap(),
         format.unwrap(),
         r_expires_range,
