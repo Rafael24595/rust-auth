@@ -140,7 +140,12 @@ impl CryptoClient {
         let mut body = Vec::new();
         let b_body = response.text().await;
         if b_body.is_ok() {
-            body = b_body.unwrap().as_bytes().to_vec();
+            let symmetric = service.symetric_key();
+            if symmetric.is_none() {
+                return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), String::from("Symmetric key not found")));
+            }
+            let decrypted = symmetric.unwrap().decrypt_message(b_body.unwrap().as_bytes())?;
+            body = decrypted.as_bytes().to_vec();
         }
 
         crypto_response.set_body(body);

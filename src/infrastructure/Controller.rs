@@ -160,7 +160,17 @@ async fn resolve(Path((service, path)): Path<(String, String)>, request: Request
         }
     }
     
-    let r_response = response.body(Body::from(crypto_response.body()));
+    let b_body = crypto_response.body();
+    if web_service.symetric_key().is_none() {
+        return Err((StatusCode::FORBIDDEN, String::from("Symmetric key not found"))); 
+    }
+    let decrypted = web_service.symetric_key().unwrap().encrypt_message(&b_body);
+    if decrypted.is_err() {
+        return Err((StatusCode::FORBIDDEN, decrypted.err().unwrap().message())); 
+    }
+    let body = decrypted.unwrap().as_bytes().to_vec();
+
+    let r_response = response.body(Body::from(body));
     if r_response.is_err() {
         let error = r_response.err().unwrap();
         return Err((StatusCode::INTERNAL_SERVER_ERROR, error.to_string()));    
