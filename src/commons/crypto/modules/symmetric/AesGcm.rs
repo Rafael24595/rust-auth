@@ -1,5 +1,5 @@
-use aes::{cipher::{generic_array::GenericArray, ArrayLength, BlockDecrypt, BlockEncrypt, KeyInit}, Block};
-use aes_gcm::{aead::Aead, AeadCore, Aes128Gcm, Aes256Gcm, Key};
+use aes_gcm::KeyInit;
+use aes_gcm::{aead::Aead, Aes128Gcm, Aes256Gcm, Key, Nonce};
 use base64::{engine::general_purpose, Engine};
 use rand::Rng;
 use reqwest::StatusCode;
@@ -9,10 +9,12 @@ use crate::commons::exception::{AuthenticationApiException, AuthenticationAppExc
 use crate::commons::crypto::modules::symmetric::{AesBytes, SymmetricManager::SymmetricManager};
 use crate::commons::crypto::modules::symmetric::SymmetricKey;
 
-pub const MODULE_CODE: &str = "AES_GMC";
+use super::AesGcmMessage;
+
+pub const MODULE_CODE: &str = "AES_GCM";
 
 #[derive(Clone)]
-pub struct AesGmc {
+pub struct AesGcm {
     key: Vec<u8>,
     bytes: usize,
 }
@@ -23,7 +25,7 @@ pub(crate) fn new(bytes: AesBytes::AesBytes) -> Result<impl SymmetricManager, Au
         return Err(key.err().unwrap());
     }
 
-    let aes = AesGmc {
+    let aes = AesGcm {
         key: key.unwrap(),
         bytes: bytes.as_usize(),
     };
@@ -42,7 +44,7 @@ pub(crate) fn from_symmetric(symmetric: SymmetricKey::SymmetricKey) -> Result<im
         return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), bytes.err().unwrap().to_string()));
     }
 
-    let aes = AesGmc {
+    let aes = AesGcm {
         key: symmetric.key(),
         bytes: bytes.unwrap().as_usize(),
     };
@@ -66,7 +68,6 @@ pub(crate) fn generate_key(bytes: AesBytes::AesBytes) -> Result<Vec<u8>, Authent
 fn calculate_key_length(aes_bytes: usize) -> Result<usize, AuthenticationAppException::AuthenticationAppException> {
     let key_size = match aes_bytes {
         128 => 16,
-        192 => 24,
         256 => 32,
         _ => {
             return Err(AuthenticationAppException::new(String::from("AES Bytes value must be 128, 192 or 256")));
@@ -75,7 +76,7 @@ fn calculate_key_length(aes_bytes: usize) -> Result<usize, AuthenticationAppExce
     return Ok(key_size);
 }
 
-impl SymmetricManager for AesGmc {
+impl SymmetricManager for AesGcm {
 
     fn encrypt(&self, message: &[u8]) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
         let o_cipher = self.build_cipher();
@@ -89,13 +90,13 @@ impl SymmetricManager for AesGmc {
             return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), result.err().unwrap().to_string()));
         }
 
-        return Ok(general_purpose::STANDARD.encode(&result.unwrap()));
+        return Ok(result.unwrap().to_string());
     }
 
     fn decrypt(&self, encrypted_message: &[u8]) -> Result<String, crate::commons::exception::AuthenticationApiException::AuthenticationApiException> {
-        let message_decoded = general_purpose::STANDARD.decode(encrypted_message);
-        if message_decoded.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), message_decoded.err().unwrap().to_string()));
+        let message = AesGcmMessage::from_slice(encrypted_message);
+        if message.is_err() {
+            return Err(message.err().unwrap());
         }
 
         let o_cipher = self.build_cipher();
@@ -104,7 +105,7 @@ impl SymmetricManager for AesGmc {
         }
 
         let cipher = o_cipher.unwrap();
-        let result = cipher.generic_encrypt(&message_decoded.unwrap());
+        let result = cipher.generic_decrypt(message.unwrap());
         if result.is_err() {
             return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), result.err().unwrap().to_string()));
         }
@@ -114,7 +115,7 @@ impl SymmetricManager for AesGmc {
 
 }
 
-impl AesGmc {
+impl AesGcm {
 
     fn build_cipher(&self) -> Result<Box<dyn AesGeneric> , AuthenticationApiException::AuthenticationApiException> {
         if self.bytes == 128 {
@@ -124,7 +125,6 @@ impl AesGmc {
         }
         if self.bytes == 256 {
             let key = Key::<Aes256Gcm>::from_slice(&self.key);
-
             let cipher = Aes256Gcm::new(&key);
             return Ok(Box::new(cipher));
         }
@@ -134,28 +134,56 @@ impl AesGmc {
 }
 
 trait AesGeneric {
-    fn generic_encrypt(&self, message: &[u8]) -> Result<Vec<u8>, aes_gcm::Error>  ;
-    fn generic_decrypt(&self, message: &[u8]) -> Result<Vec<u8>, aes_gcm::Error>  ;
+    fn generic_encrypt(&self, message: &[u8]) -> Result<AesGcmMessage::AesGcmMessage, aes_gcm::Error>  ;
+    fn generic_decrypt(&self, message: AesGcmMessage::AesGcmMessage) -> Result<Vec<u8>, aes_gcm::Error>  ;
 }
 
 impl AesGeneric for aes_gcm::Aes128Gcm {
-    fn generic_encrypt(&self, message: &[u8]) -> Result<Vec<u8>, aes_gcm::Error> {
-        let iv = GenericArray::default();
-        return self.encrypt(&iv, message);
+    fn generic_encrypt(&self, message: &[u8]) -> Result<AesGcmMessage::AesGcmMessage, aes_gcm::Error> {
+        let iv: Vec<u8> = (0..12)
+            .map(|_| rand::thread_rng().gen())
+            .collect();
+
+        let nonce = Nonce::from_slice(&iv);
+        let payload = self.encrypt(&nonce, message)?;
+
+        let nonce64 = general_purpose::STANDARD.encode(nonce);
+        let payload64 = general_purpose::STANDARD.encode(payload);
+
+        return Ok(AesGcmMessage::new(
+            nonce64.as_bytes().to_vec(),
+            payload64.as_bytes().to_vec()
+        ));
     }
-    fn generic_decrypt(&self, message: &[u8]) -> Result<Vec<u8>, aes_gcm::Error>  {
-        let iv = GenericArray::default();
-        return self.decrypt(&iv, message);
+    fn generic_decrypt(&self, message: AesGcmMessage::AesGcmMessage) -> Result<Vec<u8>, aes_gcm::Error>  {
+        let binding = message.nonce();
+        let nonce = Nonce::from_slice(&binding);
+        let payload: &[u8] = &message.payload();
+        return self.decrypt(&nonce, payload);
     }
 }
 
 impl AesGeneric for aes_gcm::Aes256Gcm {
-    fn generic_encrypt(&self, message: &[u8]) -> Result<Vec<u8>, aes_gcm::Error> {
-        let iv = GenericArray::default();
-        return self.encrypt(&iv, message);
+    fn generic_encrypt(&self, message: &[u8]) -> Result<AesGcmMessage::AesGcmMessage, aes_gcm::Error> {
+        let iv: Vec<u8> = (0..12)
+            .map(|_| rand::thread_rng().gen())
+            .collect();
+
+        let nonce = Nonce::from_slice(&iv);
+        let payload = self.encrypt(&nonce, message)?;
+
+        let nonce64 = general_purpose::STANDARD.encode(nonce);
+        let payload64 = general_purpose::STANDARD.encode(payload);
+
+        return Ok(AesGcmMessage::new(
+            nonce64.as_bytes().to_vec(),
+            payload64.as_bytes().to_vec()
+        ));
     }
-    fn generic_decrypt(&self, message: &[u8]) -> Result<Vec<u8>, aes_gcm::Error>  {
-        let iv = GenericArray::default();
-        return self.decrypt(&iv, message);
+    fn generic_decrypt(&self, message: AesGcmMessage::AesGcmMessage) -> Result<Vec<u8>, aes_gcm::Error>  {
+        let binding = message.nonce();
+        let nonce = Nonce::from_slice(&binding);
+        let payload: &[u8] = &message.payload();
+        return self.decrypt(&nonce, payload);
     }
 }

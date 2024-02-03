@@ -9,7 +9,7 @@ use crate::commons::crypto::modules::symmetric::AesBytes;
 use crate::commons::exception::AuthenticationAppException;
 use crate::infrastructure::DtoSymetricKey;
 
-use super::{Aes, SymmetricManager};
+use super::{Aes, AesGcm, SymmetricManager};
 use super::SymmetricManager::SymmetricManager as _;
 
 #[derive(Clone)]
@@ -28,13 +28,17 @@ pub(crate) fn new(module: String, format: String, expires: u128) -> Result<Symme
         return Err(key.err().unwrap());
     }
 
+    return _new(key.unwrap(), module, format, expires);
+}
+
+fn _new(key: Vec<u8>, module: String, format: String, expires: u128) -> Result<SymmetricKey, AuthenticationAppException::AuthenticationAppException> {
     let current_system_time = SystemTime::now();
     let duration_since_epoch = current_system_time.duration_since(UNIX_EPOCH);
     let timestamp = duration_since_epoch.unwrap_or_default().as_millis();
 
     let data = SymmetricKey {
         module: module,
-        key: key.unwrap(),
+        key: key,
         format: format,
         expires: expires,
         timestamp: timestamp,
@@ -49,7 +53,7 @@ pub(crate) fn from(from: SymmetricKey) -> Result<SymmetricKey, AuthenticationApp
 }
 
 pub(crate) fn from_dto(dto: DtoSymetricKey::DtoSymetricKey) -> Result<SymmetricKey, AuthenticationApiException::AuthenticationApiException> {
-    let result = new(dto.module, dto.format, dto.expires);
+    let result = _new(dto.key.as_bytes().to_vec(), dto.module, dto.format, dto.expires);
     if result.is_err() {
         return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), result.err().unwrap().to_string()));
     }
@@ -58,7 +62,7 @@ pub(crate) fn from_dto(dto: DtoSymetricKey::DtoSymetricKey) -> Result<SymmetricK
 
 fn generate_key(module: String, format: String) -> Result<Vec<u8>, AuthenticationAppException::AuthenticationAppException> {
     match module.as_str() {
-        Aes::MODULE_CODE => {
+        AesGcm::MODULE_CODE => {
             let size = format.parse::<usize>();
             if size.is_err() {
                 return Err(AuthenticationAppException::new(size.err().unwrap().to_string()));

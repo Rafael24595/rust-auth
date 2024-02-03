@@ -33,7 +33,8 @@ mod commons {
                 pub mod SymmetricKey;
                 pub mod AesBytes;
                 pub mod Aes;
-                pub mod AesGmc;
+                pub mod AesGcm;
+                pub mod AesGcmMessage;
             }
             pub mod asymmetric {
                 pub mod Utils;

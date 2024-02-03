@@ -1,4 +1,4 @@
-use reqwest::StatusCode;
+use reqwest::{header::CONTENT_TYPE, StatusCode};
 
 use crate::{infrastructure::{DtoPubKeyRequest, entity::{CryptoRequest, CryptoResponse}}, domain::{Services, Service}, commons::{exception::AuthenticationApiException, configuration::Configuration}};
 
@@ -108,6 +108,8 @@ impl CryptoClient {
             let encrypted = symmetric.unwrap().encrypt_message(&v_body)?;
             petition = petition.body(encrypted);
         }
+
+        petition = petition.header(CONTENT_TYPE, "text/plain");
 
         for header in self.request.headers() {
             let key = header.key();

@@ -12,7 +12,7 @@ pub(crate) fn find_manager(module: String, format: String, pass_phrase: String) 
             return Ok(Rsa::new(format.clone(), pass_phrase.clone()));
         }
         _ => {
-            Err(String::from("Module not dound."))
+            Err(String::from("Module not found."))
         }
     }
 }
