@@ -1,4 +1,4 @@
-use reqwest::{header::CONTENT_TYPE, StatusCode};
+use reqwest::{header::CONTENT_TYPE, Response, StatusCode};
 
 use crate::{infrastructure::{DtoPubKeyRequest, entity::{CryptoRequest, CryptoResponse}}, domain::{Services, Service}, commons::{exception::AuthenticationApiException, configuration::Configuration}};
 
@@ -77,13 +77,24 @@ impl CryptoClient {
         if o_service.is_none() {
             return Err(AuthenticationApiException::new(StatusCode::BAD_REQUEST.as_u16(), String::from("Service is not defined.")));
         }
-        let service = o_service.unwrap();
         
+        let service = o_service.unwrap();
+        let petition = self.parse_request(service.clone(), self.request.clone())?;
+
+        let response = petition.send().await;
+        if response.is_err() {
+            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), response.err().unwrap().to_string()));
+        }
+
+        return self.parse_response(service, response.unwrap()).await;
+    }
+
+    fn parse_request(&self, service: Service::Service, request: CryptoRequest::CryptoRequest) -> Result<reqwest::RequestBuilder, AuthenticationApiException::AuthenticationApiException> {        
         let client = reqwest::Client::new();
         
         let host = service.uri();
-        let uri = host + "/" + &self.request.uri();
-        let method = self.request.method();
+        let uri = host + "/" + &request.uri();
+        let method = request.method();
 
         let mut petition;
         match method.as_str() {
@@ -100,7 +111,7 @@ impl CryptoClient {
         };
 
         if method != "GET" {
-            let v_body = self.request.body();
+            let v_body = request.body();
             let symmetric = service.symetric_key();
             if symmetric.is_none() {
                 return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), String::from("Symmetric key not found")));
@@ -111,7 +122,7 @@ impl CryptoClient {
 
         petition = petition.header(CONTENT_TYPE, "text/plain");
 
-        for header in self.request.headers() {
+        for header in request.headers() {
             let key = header.key();
             if !key.eq_ignore_ascii_case(Configuration::COOKIE_NAME) {
                 for value in header.values() {
@@ -120,13 +131,10 @@ impl CryptoClient {
             }
         }
 
-        let o_response = petition.send().await;
-        if o_response.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), o_response.err().unwrap().to_string()));
-        }
+        return Ok(petition);
+    }
 
-        let response = o_response.unwrap();        
-
+    pub async fn parse_response(&mut self, service: Service::Service, response: Response) -> Result<CryptoResponse::CryptoResponse, AuthenticationApiException::AuthenticationApiException> {
         let mut crypto_response = CryptoResponse::new();
 
         crypto_response.set_status(response.status().as_u16());

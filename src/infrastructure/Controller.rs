@@ -6,13 +6,13 @@ use axum::{
     Router, middleware,
 };
 
-use crate::{commons::{configuration::Configuration, crypto::ServiceToken}, domain::Services, infrastructure::{
+use crate::{commons::{configuration::Configuration, crypto::ServiceToken, exception::AuthenticationApiException}, domain::Services, infrastructure::{
     entity::CryptoRequest,
     Handler, Service, DtoPubKeyResponse}};
 
 use crate::domain::Service as WebService;
 
-use super::DtoSuscribePayload;
+use super::{entity::CryptoResponse, DtoSuscribePayload};
 
 pub fn route(router: Router) -> Router {
     return router    
@@ -112,7 +112,23 @@ async fn key(Path(service): Path<String>) -> Result<(StatusCode, Json<DtoPubKeyR
 async fn resolve(Path((service, path)): Path<(String, String)>, request: Request) -> Result<Response<Body>, (StatusCode, String)>  {
     let header = request.headers().get(String::from(Configuration::COOKIE_NAME));
     let web_service = token_service(header)?;
+    
+    let crypto_request = parse_request(web_service.clone(), service, path, request).await;
+    if crypto_request.is_err() {
+        let error = crypto_request.err().unwrap();
+        return Err((StatusCode::from_u16(error.status()).unwrap_or_default(), error.message()));    
+    }
 
+    let r_crypto_response = Service::resolve(crypto_request.unwrap()).await;
+    if r_crypto_response.is_err() {
+        let error = r_crypto_response.err().unwrap();
+        return Err((StatusCode::from_u16(error.status()).unwrap_or_default(), error.message()));    
+    }
+
+    return parse_response(web_service, r_crypto_response.unwrap());
+}
+
+async fn parse_request(web_service: WebService::Service, service: String, path: String, request: Request) -> Result<CryptoRequest::CryptoRequest, AuthenticationApiException::AuthenticationApiException>  {
     let method = request.method().to_string();
     let headers = request.headers().clone();
     let uri = request.uri().clone();
@@ -121,11 +137,11 @@ async fn resolve(Path((service, path)): Path<(String, String)>, request: Request
     let b_body = to_bytes(request.into_body(), usize::MAX).await;
     if b_body.is_ok() {
         if web_service.symetric_key().is_none() {
-            return Err((StatusCode::FORBIDDEN, String::from("Symmetric key not found"))); 
+            return Err(AuthenticationApiException::new(StatusCode::FORBIDDEN.as_u16(), String::from("Symmetric key not found"))); 
         }
         let decrypted = web_service.symetric_key().unwrap().decrypt_message(&b_body.unwrap().to_vec());
         if decrypted.is_err() {
-            return Err((StatusCode::FORBIDDEN, decrypted.err().unwrap().message())); 
+            return Err(AuthenticationApiException::new(StatusCode::FORBIDDEN.as_u16(), decrypted.err().unwrap().message())); 
         }
         body = decrypted.unwrap().as_bytes().to_vec();
     }
@@ -143,13 +159,10 @@ async fn resolve(Path((service, path)): Path<(String, String)>, request: Request
         crypto_request.add_header_parameter_tuple(name, value);
     }
 
-    let r_crypto_response = Service::resolve(crypto_request).await;
-    if r_crypto_response.is_err() {
-        let error = r_crypto_response.err().unwrap();
-        return Err((StatusCode::from_u16(error.status()).unwrap_or_default(), error.message()));    
-    }
-    let crypto_response = r_crypto_response.unwrap();
+    return Ok(crypto_request);
+}
 
+fn parse_response(web_service: WebService::Service, crypto_response: CryptoResponse::CryptoResponse) -> Result<Response<Body>, (StatusCode, String)>  {
     let mut response = Response::builder();
     response = response.status(crypto_response.status());
 
