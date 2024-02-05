@@ -3,7 +3,7 @@ use base64::Engine;
 use reqwest::StatusCode;
 
 use crate::commons::exception::AuthenticationApiException;
-use crate::infrastructure::{DtoPubKeyResponse, DtoService, DtoSuscribePayload};
+use crate::infrastructure::dto::{DtoPubKeyResponse, DtoService, DtoSuscribePayload};
 
 use super::modules::asymmetric::AsymmetricKeys;
 use super::modules::symmetric::{SymmetricKey, SymmetricKeys};

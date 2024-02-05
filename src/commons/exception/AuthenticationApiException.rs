@@ -1,9 +1,14 @@
 use std::fmt;
 use std::error::Error;
 
+use crate::commons::exception::ErrorCodes;
+
+pub(crate) const ExceptionHeader: &str = "Error-Code";
+
 #[derive(Debug, Clone)]
 pub struct AuthenticationApiException {
     status: u16,
+    error_code: ErrorCodes::ErrorCodes,
     message: String,
 }
 
@@ -18,6 +23,7 @@ impl Error for AuthenticationApiException {}
 pub(crate) fn new(status: u16, message: String) -> AuthenticationApiException {
     return AuthenticationApiException {
         status,
+        error_code: ErrorCodes::ErrorCodes::CLIUA001,
         message
     };
 }
@@ -27,7 +33,11 @@ impl AuthenticationApiException {
     pub fn status(&self) -> u16 {
         return self.status;
     }
-    
+
+    pub fn error_code(&self) -> ErrorCodes::ErrorCodes {
+        return self.error_code.clone();
+    }
+
     pub fn message(&self) -> String {
         return self.message.clone();
     }

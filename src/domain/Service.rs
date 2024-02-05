@@ -1,4 +1,4 @@
-use crate::{commons::{crypto::modules::{asymmetric::AsymmetricPublic, symmetric::SymmetricKey}, exception::AuthenticationApiException}, infrastructure::DtoService};
+use crate::{commons::{crypto::modules::{asymmetric::AsymmetricPublic, symmetric::SymmetricKey}, exception::AuthenticationApiException}, infrastructure::dto::DtoService};
 
 #[derive(Clone)]
 pub struct Service {

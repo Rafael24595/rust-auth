@@ -7,7 +7,7 @@ use crate::commons::exception::AuthenticationApiException;
 
 use crate::commons::crypto::modules::symmetric::AesBytes;
 use crate::commons::exception::AuthenticationAppException;
-use crate::infrastructure::DtoSymetricKey;
+use crate::infrastructure::dto::DtoSymetricKey;
 
 use super::{Aes, AesGcm, SymmetricManager};
 use super::SymmetricManager::SymmetricManager as _;

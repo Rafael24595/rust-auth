@@ -4,7 +4,7 @@ use reqwest::StatusCode;
 
 use crate::commons::crypto::modules::asymmetric::AsymmetricManager;
 use crate::commons::exception::AuthenticationApiException;
-use crate::infrastructure::{DtoPubKeyRequest, DtoPubKeyResponse};
+use crate::infrastructure::dto::{DtoPubKeyRequest, DtoPubKeyResponse};
 
 use super::AsymmetricManager::AsymmetricManager as _;
 use super::Utils;

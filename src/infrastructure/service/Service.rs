@@ -4,13 +4,10 @@ use crate::commons::crypto::modules::asymmetric::AsymmetricPublic;
 use crate::commons::exception::AuthenticationApiException;
 use crate::domain::Service;
 use crate::domain::Services;
-use crate::infrastructure::DtoPubKeyResponse;
+use crate::infrastructure::dto::{DtoPubKeyResponse, DtoSuscribePayload};
 use crate::commons::configuration::Configuration;
 
-use crate::infrastructure::CryptoClient;
-use crate::infrastructure::entity::{CryptoRequest, CryptoResponse};
-
-use super::DtoSuscribePayload;
+use crate::infrastructure::client::{CryptoRequest, CryptoResponse, CryptoClient};
 
 pub(crate) async fn nodekey() -> Result<DtoPubKeyResponse::DtoPubKeyResponse, AuthenticationApiException::AuthenticationApiException> {
     let crypto = Configuration::instance().crypto;

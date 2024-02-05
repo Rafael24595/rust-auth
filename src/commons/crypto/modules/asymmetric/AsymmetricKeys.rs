@@ -1,6 +1,6 @@
 use crate::commons::crypto::ServiceToken;
 use crate::commons::exception::{AuthenticationApiException, AuthenticationAppException};
-use crate::infrastructure::DtoPubKeyResponse;
+use crate::infrastructure::dto::DtoPubKeyResponse;
 
 use super::{AsymmetricPrivate, AsymmetricPublic};
 

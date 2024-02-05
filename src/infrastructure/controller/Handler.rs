@@ -41,5 +41,7 @@ pub(crate) async fn client_tracer_handler(ConnectInfo(addr): ConnectInfo<SocketA
     }
     let pass_token = headers.get(String::from(Configuration::COOKIE_NAME));
 
-    return Ok(next.run(request).await);
+    let response = next.run(request).await;
+
+    return Ok(response);
 }

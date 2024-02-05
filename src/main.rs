@@ -1,18 +1,25 @@
 mod infrastructure {
-    pub mod Controller;
-    pub mod Handler;
-    pub mod Service;
-    pub mod CryptoClient;
-    pub mod DtoPubKeyRequest;
-    pub mod DtoSymetricKey;
-    pub mod DtoSuscribePayload;
-    pub mod DtoService;
-    pub mod DtoPubKeyResponse;
-    pub mod entity {
+    pub mod service {
+        pub mod Service;
+    }
+    pub mod controller {
+        pub mod Controller;
+        pub mod Handler;
+        pub mod Utils;
+    }
+    pub mod dto {
+        pub mod DtoPubKeyRequest;
+        pub mod DtoSymetricKey;
+        pub mod DtoSuscribePayload;
+        pub mod DtoService;
+        pub mod DtoPubKeyResponse;
+    }
+    pub mod client {
         pub mod HeaderParameter;
         pub mod QueryParameter;
         pub mod CryptoRequest;
         pub mod CryptoResponse;
+        pub mod CryptoClient;
     }
 }
 
@@ -47,6 +54,7 @@ mod commons {
         }
     }
     pub mod exception {
+        pub mod ErrorCodes;
         pub mod AuthenticationAppException;
         pub mod AuthenticationApiException;
     }
@@ -62,7 +70,7 @@ use std::net::SocketAddr;
 
 use axum::Router;
 use commons::configuration::Configurator;
-use infrastructure::Controller;
+use infrastructure::controller::Controller;
 
 #[tokio::main]
 async fn main() {

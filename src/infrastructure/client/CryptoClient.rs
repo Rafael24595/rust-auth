@@ -1,6 +1,6 @@
 use reqwest::{header::CONTENT_TYPE, Response, StatusCode};
 
-use crate::{infrastructure::{DtoPubKeyRequest, entity::{CryptoRequest, CryptoResponse}}, domain::{Services, Service}, commons::{exception::AuthenticationApiException, configuration::Configuration}};
+use crate::{infrastructure::{dto::DtoPubKeyRequest, client::{CryptoRequest, CryptoResponse}}, domain::{Services, Service}, commons::{exception::AuthenticationApiException, configuration::Configuration}};
 
 #[derive(Clone, Debug)]
 pub struct CryptoClient {
