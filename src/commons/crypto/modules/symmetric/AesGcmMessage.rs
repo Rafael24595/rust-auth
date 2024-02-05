@@ -1,7 +1,7 @@
 use base64::{engine::general_purpose, Engine};
 use reqwest::StatusCode;
 
-use crate::commons::exception::AuthenticationApiException;
+use crate::commons::exception::{AuthenticationApiException, ErrorCodes::ErrorCodes};
 
 pub struct AesGcmMessage {
     nonce: Vec<u8>,
@@ -22,7 +22,10 @@ pub(crate) fn from_slice(slice: &[u8]) -> Result<AesGcmMessage, AuthenticationAp
     if fragments.len() > 1 {
         let decoded = general_purpose::STANDARD.decode(fragments.first().unwrap().to_vec());
         if decoded.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), decoded.err().unwrap().to_string()));
+            return Err(AuthenticationApiException::new(
+                StatusCode::UNPROCESSABLE_ENTITY.as_u16(), 
+                ErrorCodes::CLIFB006,
+                decoded.err().unwrap().to_string()));
         }
         nonce = decoded.unwrap();
     }
@@ -31,7 +34,10 @@ pub(crate) fn from_slice(slice: &[u8]) -> Result<AesGcmMessage, AuthenticationAp
     if fragments.len() > 0 {
         let decoded = general_purpose::STANDARD.decode(fragments.last().unwrap().to_vec());
         if decoded.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), decoded.err().unwrap().to_string()));
+            return Err(AuthenticationApiException::new(
+                StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+                ErrorCodes::CLIFB006,
+                decoded.err().unwrap().to_string()));
         }
         payload = decoded.unwrap();
     }
@@ -39,7 +45,7 @@ pub(crate) fn from_slice(slice: &[u8]) -> Result<AesGcmMessage, AuthenticationAp
     return Ok(AesGcmMessage{
         nonce,
         payload
-    })
+    });
 }
 
 impl AesGcmMessage {

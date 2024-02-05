@@ -1,21 +1,21 @@
 use reqwest::StatusCode;
 
-use crate::commons::exception::AuthenticationApiException;
+use crate::commons::exception::{AuthenticationApiException, ErrorCodes::ErrorCodes};
 
-use super::{Aes, AesGcm, SymmetricManager};
+use super::{AesGcm, SymmetricManager};
 use crate::commons::crypto::modules::symmetric::SymmetricKey;
 
 pub(crate) fn find_manager(symmetric: SymmetricKey::SymmetricKey) -> Result<impl SymmetricManager::SymmetricManager, AuthenticationApiException::AuthenticationApiException> {
     match symmetric.module().as_str() {
         AesGcm::MODULE_CODE => {
-            let result = AesGcm::from_symmetric(symmetric);
-            if result.is_err() {
-                return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), result.err().unwrap().to_string()));
-            }
-            return Ok(result.unwrap());
+            let result = AesGcm::from_symmetric(symmetric)?;
+            return Ok(result);
         }
         _ => {
-            Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), String::from("Module not found.")))
+            Err(AuthenticationApiException::new(
+                StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+                ErrorCodes::SYSIN001,
+                String::from("Module not found.")))
         }
     }
 }

@@ -7,6 +7,7 @@ use crate::commons::exception::AuthenticationApiException;
 
 use crate::commons::crypto::modules::symmetric::AesBytes;
 use crate::commons::exception::AuthenticationAppException;
+use crate::commons::exception::ErrorCodes::ErrorCodes;
 use crate::infrastructure::dto::DtoSymetricKey;
 
 use super::{Aes, AesGcm, SymmetricManager};
@@ -55,7 +56,10 @@ pub(crate) fn from(from: SymmetricKey) -> Result<SymmetricKey, AuthenticationApp
 pub(crate) fn from_dto(dto: DtoSymetricKey::DtoSymetricKey) -> Result<SymmetricKey, AuthenticationApiException::AuthenticationApiException> {
     let result = _new(dto.key.as_bytes().to_vec(), dto.module, dto.format, dto.expires);
     if result.is_err() {
-        return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), result.err().unwrap().to_string()));
+        return Err(AuthenticationApiException::new(
+            StatusCode::UNAUTHORIZED.as_u16(),
+            ErrorCodes::CLIFB005,
+            result.err().unwrap().to_string()));
     }
     return Ok(result.unwrap());
 }

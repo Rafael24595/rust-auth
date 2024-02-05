@@ -3,7 +3,7 @@ use std::error::Error;
 
 use crate::commons::exception::ErrorCodes;
 
-pub(crate) const ExceptionHeader: &str = "Error-Code";
+pub(crate) const EXCEPTION_HEADER: &str = "Error-Code";
 
 #[derive(Debug, Clone)]
 pub struct AuthenticationApiException {
@@ -20,10 +20,10 @@ impl fmt::Display for AuthenticationApiException {
 
 impl Error for AuthenticationApiException {}
 
-pub(crate) fn new(status: u16, message: String) -> AuthenticationApiException {
+pub(crate) fn new(status: u16, error_code: ErrorCodes::ErrorCodes, message: String) -> AuthenticationApiException {
     return AuthenticationApiException {
         status,
-        error_code: ErrorCodes::ErrorCodes::CLIUA001,
+        error_code,
         message
     };
 }
