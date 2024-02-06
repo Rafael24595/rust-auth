@@ -13,6 +13,7 @@ mod infrastructure {
         pub mod DtoSuscribePayload;
         pub mod DtoService;
         pub mod DtoPubKeyResponse;
+        pub mod DtoExceptionData;
     }
     pub mod client {
         pub mod HeaderParameter;

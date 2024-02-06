@@ -1,4 +1,9 @@
-#[derive(Debug, Clone)]
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
+
+use crate::infrastructure::dto::DtoExceptionData;
+
+#[derive(Debug, Clone, EnumIter)]
 pub enum ErrorCodes {
     SYSIN001, SYSIN002, SYSIN003,
 
@@ -11,6 +16,15 @@ pub enum ErrorCodes {
     CLIFB001, CLIFB002, CLIFB003,
     CLIFB004, CLIFB005, CLIFB006,
     CLIFB007, CLIFB008,
+}
+
+pub(crate) fn from_slice(code: String) -> Option<ErrorCodes> {
+    for error in ErrorCodes::iter() {
+        if code == error.code() {
+            return Some(error);
+        }
+    }
+    return None;
 }
 
 impl ErrorCodes {
@@ -47,6 +61,11 @@ impl ErrorCodes {
             ErrorCodes::CLIFB007 => ErrorCode{code: "CLIFB007", description: "Message cannot be decrypted."},
             ErrorCodes::CLIFB008 => ErrorCode{code: "CLIFB008", description: "Message cannot be encrypted."},
         }
+    }
+
+    pub fn as_dto(&self) -> DtoExceptionData::DtoExceptionData {
+        let data = self.data();
+        return DtoExceptionData::new(data.code.to_string(), data.description.to_string());
     }
 
 }

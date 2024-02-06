@@ -1,19 +1,23 @@
 use std::net::SocketAddr;
 
-use axum::{http::{HeaderMap, StatusCode, HeaderValue}, extract::{ConnectInfo, Request}, middleware::Next, response::Response};
+use axum::{extract::{ConnectInfo, Request}, http::{HeaderMap, HeaderValue, StatusCode}, middleware::Next, response::{IntoResponse, Response}};
 
-use crate::commons::configuration::Configuration;
+use crate::commons::{configuration::Configuration, exception::{AuthenticationApiException, ErrorCodes::ErrorCodes}};
 
-pub(crate) async fn auth_handler(headers: HeaderMap, request: Request, next: Next) -> Result<Response, StatusCode> {
+pub(crate) async fn auth_handler(headers: HeaderMap, request: Request, next: Next) -> Result<Response, impl IntoResponse> {
     let o_token = headers.get(String::from(Configuration::COOKIE_NAME));
     if o_token.is_none() {
-        return Err(StatusCode::UNAUTHORIZED);
+        let error = AuthenticationApiException::new(
+            StatusCode::UNAUTHORIZED.as_u16(), 
+            ErrorCodes::CLIUA002,
+            String::from("Token not found"));
+        return Err(error.into_response());
     }
     let token = o_token.unwrap().to_str().unwrap().to_string();
     let config = Configuration::instance().crypto.asymmetric_key_pair();
     let r_validation = config.verify(token);
     if r_validation.is_err() {
-        return Err(StatusCode::UNAUTHORIZED);
+        return Err(r_validation.err().unwrap().into_response());
     }
     let validation = r_validation.unwrap();
 

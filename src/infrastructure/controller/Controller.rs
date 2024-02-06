@@ -2,8 +2,8 @@ use axum::{
     body::Body, extract::{Json, Path, Request}, http::{Response, StatusCode}, middleware, response::IntoResponse, routing::{get, post}, Router
 };
 
-use crate::{commons::{configuration::Configuration, exception::{AuthenticationApiException, ErrorCodes::ErrorCodes}}, infrastructure::{
-    dto::{DtoPubKeyResponse, DtoSuscribePayload}, service::Service}};
+use crate::{commons::{configuration::Configuration, exception::{AuthenticationApiException, ErrorCodes}}, infrastructure::{
+    dto::{DtoExceptionData, DtoPubKeyResponse, DtoSuscribePayload}, service::Service}};
 
 use super::{Handler, Utils};
 
@@ -26,6 +26,9 @@ pub fn route(router: Router) -> Router {
         .route("/nodekey", get(nodekey))
         .route("/subscribe", post(subscribe))
         .route("/renove", post(renove))
+
+        .route("/exception/:exception", get(exception))
+        
         .route_layer(middleware::from_fn(Handler::client_tracer_handler))
 }
 
@@ -134,10 +137,18 @@ async fn resolve(Path((service, path)): Path<(String, String)>, request: Request
     return Ok(response.unwrap());
 }
 
+async fn exception(Path(exception): Path<String>) -> Result<Json<DtoExceptionData::DtoExceptionData>, StatusCode> {
+    let error = ErrorCodes::from_slice(exception);
+    if error.is_none() {
+        return Err(StatusCode::NOT_FOUND);
+    }
+    return Ok(Json(error.unwrap().as_dto()));
+}
+
 fn not_found() -> Response<Body> {
     let error = AuthenticationApiException::new(
         StatusCode::INTERNAL_SERVER_ERROR.as_u16(), 
-        ErrorCodes::SYSIN001,
+        ErrorCodes::ErrorCodes::SYSIN001,
         String::from("Not found"));
     return error.into_response();
 }
