@@ -1,4 +1,6 @@
-use crate::{commons::{crypto::modules::{asymmetric::AsymmetricPublic, symmetric::SymmetricKey}, exception::AuthenticationApiException}, infrastructure::dto::DtoService};
+use reqwest::StatusCode;
+
+use crate::{commons::{crypto::modules::{asymmetric::AsymmetricPublic, symmetric::SymmetricKey}, exception::{AuthenticationApiException, ErrorCodes::ErrorCodes}}, infrastructure::dto::DtoService};
 
 #[derive(Clone)]
 pub struct Service {
@@ -72,8 +74,20 @@ impl Service {
         self.asymmetric = Some(asymmetric);
     }
 
-    pub fn symetric_key(&self) -> Option<SymmetricKey::SymmetricKey> {
-        return self.symmetric.clone();
+    pub fn symmetric_key(&self) -> Result<SymmetricKey::SymmetricKey, AuthenticationApiException::AuthenticationApiException> {
+        if self.symmetric.is_none() {
+            return Err(AuthenticationApiException::new(
+                StatusCode::FORBIDDEN.as_u16(),
+                ErrorCodes::CLIFB001,
+                String::from("Key not found"))); 
+        }
+        if !self.symmetric.as_ref().unwrap().is_active() {
+            return Err(AuthenticationApiException::new(
+                StatusCode::FORBIDDEN.as_u16(),
+                ErrorCodes::CLIFB002,
+                String::from("Key is not active"))); 
+        }
+        return Ok(self.symmetric.as_ref().unwrap().clone());
     }
 
 }

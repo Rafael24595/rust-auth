@@ -4,6 +4,7 @@ use base64::{engine::general_purpose, Engine};
 use rand::Rng;
 use reqwest::StatusCode;
 
+use crate::commons::exception::ErrorCodes::ErrorCodes;
 use crate::commons::exception::{AuthenticationApiException, AuthenticationAppException};
 
 use crate::commons::crypto::modules::symmetric::{AesBytes, SymmetricManager::SymmetricManager};
@@ -36,12 +37,18 @@ pub(crate) fn new(bytes: AesBytes::AesBytes) -> Result<impl SymmetricManager, Au
 pub(crate) fn from_symmetric(symmetric: SymmetricKey::SymmetricKey) -> Result<impl SymmetricManager, AuthenticationApiException::AuthenticationApiException> {    
     let size = symmetric.format().parse::<usize>();
     if size.is_err() {
-        return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), size.err().unwrap().to_string()));
+        return Err(AuthenticationApiException::new(
+            StatusCode::NOT_ACCEPTABLE.as_u16(),
+            ErrorCodes::CLIUA004,
+            size.err().unwrap().to_string()));
     }
 
     let bytes = AesBytes::from_usize(size.unwrap());
     if bytes.is_err() {
-        return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), bytes.err().unwrap().to_string()));
+        return Err(AuthenticationApiException::new(
+            StatusCode::NOT_ACCEPTABLE.as_u16(),
+            ErrorCodes::CLIUA004,
+            bytes.err().unwrap().to_string()));
     }
 
     let aes = AesGcm {
@@ -79,17 +86,14 @@ fn calculate_key_length(aes_bytes: usize) -> Result<usize, AuthenticationAppExce
 impl SymmetricManager for AesGcm {
 
     fn encrypt(&self, message: &[u8]) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
-        let o_cipher = self.build_cipher();
-        if o_cipher.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), o_cipher.err().unwrap().to_string()));
-        }
-
-        let cipher = o_cipher.unwrap();
+        let cipher = self.build_cipher()?;
         let result = cipher.generic_encrypt(message);
         if result.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), result.err().unwrap().to_string()));
+            return Err(AuthenticationApiException::new(
+                StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+                ErrorCodes::CLIFB008,
+                result.err().unwrap().to_string()));
         }
-
         return Ok(result.unwrap().to_string());
     }
 
@@ -99,15 +103,13 @@ impl SymmetricManager for AesGcm {
             return Err(message.err().unwrap());
         }
 
-        let o_cipher = self.build_cipher();
-        if o_cipher.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), o_cipher.err().unwrap().to_string()));
-        }
-
-        let cipher = o_cipher.unwrap();
+        let cipher = self.build_cipher()?;
         let result = cipher.generic_decrypt(message.unwrap());
         if result.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), result.err().unwrap().to_string()));
+            return Err(AuthenticationApiException::new(
+                StatusCode::FORBIDDEN.as_u16(),
+                ErrorCodes::CLIFB007,
+                result.err().unwrap().to_string()));
         }
 
         return Ok(String::from_utf8_lossy(&result.unwrap()).into());
@@ -128,7 +130,10 @@ impl AesGcm {
             let cipher = Aes256Gcm::new(&key);
             return Ok(Box::new(cipher));
         }
-        return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), String::from("AES Bytes value must be 128, 192 or 256")));
+        return Err(AuthenticationApiException::new(
+            StatusCode::NOT_ACCEPTABLE.as_u16(),
+            ErrorCodes::CLIUA004,
+            String::from("AES Bytes value must be 128 or 256")));
     }
 
 }

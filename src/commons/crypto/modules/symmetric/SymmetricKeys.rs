@@ -1,6 +1,6 @@
 use reqwest::StatusCode;
 
-use crate::commons::exception::{AuthenticationApiException, AuthenticationAppException};
+use crate::commons::exception::{AuthenticationApiException, AuthenticationAppException, ErrorCodes::ErrorCodes};
 
 use super::SymmetricKey;
 
@@ -31,12 +31,16 @@ impl SymmetricKeys {
         return Ok(symmetric_key);
     }
 
+    //TODO: Remove.
     pub fn find(&mut self) -> Result<SymmetricKey::SymmetricKey, AuthenticationApiException::AuthenticationApiException> {
         let key = self.symetric_keys.iter().cloned().find(|k| k.is_active());
         if key.is_none() {
             let o_new_key = SymmetricKey::from(self.symetric_keys[0].clone());
             if o_new_key.is_err() {
-                return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), o_new_key.err().unwrap().to_string()));
+                return Err(AuthenticationApiException::new(
+                    StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+                    ErrorCodes::SYSIN001,
+                    o_new_key.err().unwrap().to_string()));
             }
             let new_key = o_new_key.unwrap();
             self.symetric_keys.push(new_key.clone());

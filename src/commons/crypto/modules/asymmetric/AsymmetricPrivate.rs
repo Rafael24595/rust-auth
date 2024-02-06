@@ -1,5 +1,3 @@
-use reqwest::StatusCode;
-
 use crate::commons::crypto::modules::asymmetric::AsymmetricManager;
 use crate::commons::crypto::ServiceToken;
 use crate::commons::exception::AuthenticationApiException;
@@ -40,30 +38,21 @@ impl AsymmetricPrivate {
         return self.pass_phrase.clone();
     }
 
-    fn find_manager(&self) -> Result<impl AsymmetricManager::AsymmetricManager, String> {
+    fn find_manager(&self) -> Result<impl AsymmetricManager::AsymmetricManager, AuthenticationApiException::AuthenticationApiException> {
         return Utils::find_manager(self.module.clone(), self.format.clone(), self.pass_phrase.clone());
     }
 
     pub fn decrypt_message(&self, encrypted_message: &[u8]) -> Result<Vec<u8>, AuthenticationApiException::AuthenticationApiException> {
-        let module = self.find_manager();
-        if module.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), module.err().unwrap().to_string()));
-        }
-
-        return module.unwrap().decrypt(self.prikey.clone(), encrypted_message);
+        let module = self.find_manager()?;
+        return module.decrypt(self.prikey.clone(), encrypted_message);
     }
 
     pub fn sign(&self, message: String) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
-        let module = self.find_manager();
-        if module.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), module.err().unwrap().to_string()));
-        }
-
-        let r_token = module.unwrap().sign(self.prikey.clone(), message, self.expires_range);
+        let module = self.find_manager()?;
+        let r_token = module.sign(self.prikey.clone(), message, self.expires_range);
         if r_token.is_err() {
             return Err(r_token.err().unwrap());
         }
-
         return Ok(r_token.unwrap().to_string());
     }
 
@@ -76,11 +65,7 @@ impl AsymmetricPrivate {
     }
 
     pub fn verify(&self, message: String) -> Result<Option<ServiceToken::ServiceToken>, AuthenticationApiException::AuthenticationApiException> {
-        let module = self.find_manager();
-        if module.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), module.err().unwrap().to_string()));
-        }
-
+        let module = self.find_manager()?;
         let r_token = ServiceToken::from_string(message);
         if r_token.is_err() {
             return Err(r_token.err().unwrap());
@@ -93,7 +78,7 @@ impl AsymmetricPrivate {
             return Err(lifetime_validation.err().unwrap().1);
         }
 
-        let result = module.unwrap().verify(self.prikey.clone(), token.clone());
+        let result = module.verify(self.prikey.clone(), token.clone());
         if result.is_err() {
             return Err(result.err().unwrap());
         }

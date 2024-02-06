@@ -8,6 +8,7 @@ use rsa::signature::{Keypair, RandomizedSigner, SignatureEncoding, Verifier};
 use rsa::sha2::Sha256;
 
 use crate::commons::crypto::{Payload, ServiceToken};
+use crate::commons::exception::ErrorCodes::ErrorCodes;
 use crate::commons::{crypto::modules::asymmetric::AsymmetricManager, exception::AuthenticationApiException};
 
 pub const MODULE_CODE: &str = "RSA";
@@ -71,7 +72,6 @@ impl AsymmetricManager::AsymmetricManager for Rsa {
 
         let mut rng = rand::thread_rng();
         let signing_key : SigningKey<Sha256> = pkcs1v15::SigningKey::new(priv_key);
-        //TODO: Replace with hash validation and use service value.
         let signature = signing_key.sign_with_rng(&mut rng, payload.to_json().as_bytes());
         
         let token = ServiceToken::new(signature.to_bytes().to_vec(), payload);
@@ -94,12 +94,17 @@ impl AsymmetricManager::AsymmetricManager for Rsa {
 
         let signature = pkcs1v15::Signature::try_from(sign);
         if signature.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), String::from("Malformed token.")));
+            return Err(AuthenticationApiException::new(
+                StatusCode::UNAUTHORIZED.as_u16(), 
+                ErrorCodes::CLIFB004,
+                String::from("Malformed token.")));
         }
 
         let result = verifying_key.verify(payload.to_json().as_bytes(), &signature.unwrap());
         if result.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), String::from("Unautorized.")));
+            return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(),
+            ErrorCodes::CLIFB004,
+            String::from("Unautorized.")));
         }
 
         return Ok(payload.service);
@@ -114,32 +119,47 @@ impl Rsa {
             if self.format.eq_ignore_ascii_case(PKCS1) {
                 let priv_key = RsaPrivateKey::from_pkcs1_pem(&priv_string);
                 if priv_key.is_err() {
-                    return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), priv_key.err().unwrap().to_string()));
+                    return Err(AuthenticationApiException::new(
+                        StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+                        ErrorCodes::SYSIN001,
+                        priv_key.err().unwrap().to_string()));
                 }
                 return Ok(priv_key.unwrap());
             }
             if self.format.eq_ignore_ascii_case(PKCS8) {
                 let priv_key = RsaPrivateKey::from_pkcs8_pem(&priv_string);
                 if priv_key.is_err() {
-                    return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), priv_key.err().unwrap().to_string()));
+                    return Err(AuthenticationApiException::new(
+                        StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+                        ErrorCodes::SYSIN001,
+                        priv_key.err().unwrap().to_string()));
                 }
                 return Ok(priv_key.unwrap());
             }
         }
 
-        return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), String::from("Invalid format")));
+        return Err(AuthenticationApiException::new(
+            StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+            ErrorCodes::SYSIN001, 
+            String::from("Invalid format")));
     }
 
     fn public_key(&self, publ_string: String) -> Result<RsaPublicKey, AuthenticationApiException::AuthenticationApiException> {
         if self.is_pem {
             let publ_key = RsaPublicKey::from_pkcs1_pem(&publ_string);
                 if publ_key.is_err() {
-                    return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), publ_key.err().unwrap().to_string()));
+                    return Err(AuthenticationApiException::new(
+                        StatusCode::INTERNAL_SERVER_ERROR.as_u16(), 
+                        ErrorCodes::SYSIN001,
+                        publ_key.err().unwrap().to_string()));
                 }
                 return Ok(publ_key.unwrap());
         }
 
-        return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), String::from("Invalid format")));
+        return Err(AuthenticationApiException::new(
+            StatusCode::INTERNAL_SERVER_ERROR.as_u16(), 
+            ErrorCodes::SYSIN001,
+            String::from("Invalid format")));
     }
 
 }

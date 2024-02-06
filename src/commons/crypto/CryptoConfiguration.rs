@@ -3,6 +3,7 @@ use base64::Engine;
 use reqwest::StatusCode;
 
 use crate::commons::exception::AuthenticationApiException;
+use crate::commons::exception::ErrorCodes::ErrorCodes;
 use crate::infrastructure::dto::{DtoPubKeyResponse, DtoService, DtoSuscribePayload};
 
 use super::modules::asymmetric::AsymmetricKeys;
@@ -41,12 +42,17 @@ impl CryptoConfiguration {
 
         let payload_string =  String::from_utf8(decrypted_payload);
         if payload_string.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), payload_string.err().unwrap().to_string()));
+            return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(),
+            ErrorCodes::CLIUA008,
+            payload_string.err().unwrap().to_string()));
         }
 
         let r_payload: Result<DtoService::DtoService, serde_json::Error> = serde_json::from_str(&payload_string.unwrap());
         if r_payload.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), r_payload.err().unwrap().to_string()));
+            return Err(AuthenticationApiException::new(
+                StatusCode::UNAUTHORIZED.as_u16(),
+                ErrorCodes::CLIUA008,
+                r_payload.err().unwrap().to_string()));
         }
 
         return Ok(r_payload.unwrap());

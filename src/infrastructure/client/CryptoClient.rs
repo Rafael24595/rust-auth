@@ -1,6 +1,6 @@
 use reqwest::{header::CONTENT_TYPE, Response, StatusCode};
 
-use crate::{infrastructure::{dto::DtoPubKeyRequest, client::{CryptoRequest, CryptoResponse}}, domain::{Services, Service}, commons::{exception::AuthenticationApiException, configuration::Configuration}};
+use crate::{commons::{configuration::Configuration, exception::{AuthenticationApiException, ErrorCodes::ErrorCodes}}, domain::{Service, Services}, infrastructure::{client::{CryptoRequest, CryptoResponse}, dto::DtoPubKeyRequest}};
 
 #[derive(Clone, Debug)]
 pub struct CryptoClient {
@@ -33,7 +33,10 @@ pub(crate) async fn status(service: Service::Service) -> Result<(), Authenticati
     let response = r_response.unwrap();
     if !response.is_success() {
         let message = String::from_utf8_lossy(&response.body()).to_string();
-        return Err(AuthenticationApiException::new(response.status(), message));
+        return Err(AuthenticationApiException::new(
+            response.status(),
+            ErrorCodes::CLIDT001,
+            message));
     }
     
     return Ok(());
@@ -52,7 +55,10 @@ pub(crate) async fn key(service: Service::Service) -> Result<DtoPubKeyRequest::D
     
     let dto = serde_json::from_slice(&response.unwrap().body());
     if dto.is_err() {
-        return Err(AuthenticationApiException::new(StatusCode::BAD_REQUEST.as_u16(), dto.err().unwrap().to_string()));
+        return Err(AuthenticationApiException::new(
+            StatusCode::BAD_REQUEST.as_u16(), 
+            ErrorCodes::CLIDT002,
+            dto.err().unwrap().to_string()));
     }
 
     return Ok(dto.unwrap());
@@ -75,7 +81,10 @@ impl CryptoClient {
     pub async fn launch(&mut self) -> Result<CryptoResponse::CryptoResponse, AuthenticationApiException::AuthenticationApiException> {
         let o_service = Services::find(&&self.request.service());
         if o_service.is_none() {
-            return Err(AuthenticationApiException::new(StatusCode::BAD_REQUEST.as_u16(), String::from("Service is not defined.")));
+            return Err(AuthenticationApiException::new(
+                StatusCode::BAD_REQUEST.as_u16(),
+                ErrorCodes::CLIUA001,
+                String::from("Service is not defined.")));
         }
         
         let service = o_service.unwrap();
@@ -83,7 +92,10 @@ impl CryptoClient {
 
         let response = petition.send().await;
         if response.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), response.err().unwrap().to_string()));
+            return Err(AuthenticationApiException::new(
+                StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+                ErrorCodes::CLIDT003,
+                response.err().unwrap().to_string()));
         }
 
         return self.parse_response(service, response.unwrap()).await;
@@ -105,18 +117,21 @@ impl CryptoClient {
             "DELETE" => petition = client.delete(uri),
             "PATCH" => petition = client.patch(uri),
             "OPTION" | "TRACE" => 
-                return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), String::from("Method not allowed yet."))),
+                return Err(AuthenticationApiException::new(
+                    StatusCode::INTERNAL_SERVER_ERROR.as_u16(), 
+                    ErrorCodes::SYSIN001,
+                    String::from("Method not allowed yet."))),
             _ => 
-                return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), String::from("Method not found"))),
+                return Err(AuthenticationApiException::new(
+                    StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+                    ErrorCodes::SYSIN003,
+                    String::from("Method not found"))),
         };
 
         if method != "GET" {
             let v_body = request.body();
-            let symmetric = service.symetric_key();
-            if symmetric.is_none() {
-                return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), String::from("Symmetric key not found")));
-            }
-            let encrypted = symmetric.unwrap().encrypt_message(&v_body)?;
+            let symmetric = service.symmetric_key()?;
+            let encrypted = symmetric.encrypt_message(&v_body)?;
             petition = petition.body(encrypted);
         }
 
@@ -148,11 +163,8 @@ impl CryptoClient {
         let mut body = Vec::new();
         let b_body = response.text().await;
         if b_body.is_ok() {
-            let symmetric = service.symetric_key();
-            if symmetric.is_none() {
-                return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), String::from("Symmetric key not found")));
-            }
-            let decrypted = symmetric.unwrap().decrypt_message(b_body.unwrap().as_bytes())?;
+            let symmetric = service.symmetric_key()?;
+            let decrypted = symmetric.decrypt_message(b_body.unwrap().as_bytes())?;
             body = decrypted.as_bytes().to_vec();
         }
 

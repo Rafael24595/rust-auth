@@ -1,7 +1,5 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use reqwest::StatusCode;
-
 use crate::commons::crypto::modules::asymmetric::AsymmetricManager;
 use crate::commons::exception::AuthenticationApiException;
 use crate::infrastructure::dto::{DtoPubKeyRequest, DtoPubKeyResponse};
@@ -52,17 +50,13 @@ impl AsymmetricPublic {
         return self.pass_phrase.clone();
     }
 
-    fn find_manager(&self) -> Result<impl AsymmetricManager::AsymmetricManager, String> {
+    fn find_manager(&self) -> Result<impl AsymmetricManager::AsymmetricManager, AuthenticationApiException::AuthenticationApiException> {
         return Utils::find_manager(self.module.clone(), self.format.clone(), self.pass_phrase.clone());
     }
 
     pub fn encrypt_message(&self, message: &[u8]) -> Result<Vec<u8>, AuthenticationApiException::AuthenticationApiException> {
-        let module = self.find_manager();
-        if module.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), module.err().unwrap().to_string()));
-        }
-
-        return module.unwrap().encrypt(self.pubkey.clone(), message);
+        let module = self.find_manager()?;
+        return module.encrypt(self.pubkey.clone(), message);
     }
     
     pub fn as_dto(&self) -> DtoPubKeyResponse::DtoPubKeyResponse {

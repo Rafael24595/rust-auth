@@ -3,13 +3,14 @@ use base64::{engine::general_purpose, Engine};
 use rand::Rng;
 use reqwest::StatusCode;
 
-use crate::commons::exception::{AuthenticationApiException, AuthenticationAppException};
+use crate::commons::exception::{AuthenticationApiException, AuthenticationAppException, ErrorCodes::ErrorCodes};
 
 use crate::commons::crypto::modules::symmetric::{AesBytes, SymmetricManager::SymmetricManager};
 use crate::commons::crypto::modules::symmetric::SymmetricKey;
 
 pub const MODULE_CODE: &str = "AES";
 
+//TODO: Remove.
 #[derive(Clone)]
 pub struct Aes {
     key: Vec<u8>,
@@ -33,12 +34,18 @@ pub(crate) fn new(bytes: AesBytes::AesBytes) -> Result<impl SymmetricManager, Au
 pub(crate) fn from_symmetric(symmetric: SymmetricKey::SymmetricKey) -> Result<impl SymmetricManager, AuthenticationApiException::AuthenticationApiException> {    
     let size = symmetric.format().parse::<usize>();
     if size.is_err() {
-        return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), size.err().unwrap().to_string()));
+        return Err(AuthenticationApiException::new(
+            StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+            ErrorCodes::CLIUA004,
+            size.err().unwrap().to_string()));
     }
 
     let bytes = AesBytes::from_usize(size.unwrap());
     if bytes.is_err() {
-        return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), bytes.err().unwrap().to_string()));
+        return Err(AuthenticationApiException::new(
+            StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+            ErrorCodes::CLIUA004,
+            bytes.err().unwrap().to_string()));
     }
 
     let aes = Aes {
@@ -77,12 +84,7 @@ fn calculate_key_length(aes_bytes: usize) -> Result<usize, AuthenticationAppExce
 impl SymmetricManager for Aes {
 
     fn encrypt(&self, message: &[u8]) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
-        let o_cipher = self.build_cipher();
-        if o_cipher.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), o_cipher.err().unwrap().to_string()));
-        }
-
-        let cipher = o_cipher.unwrap();
+        let cipher = self.build_cipher()?;
 
         let mut buffer = Vec::new();
         for chunk in message.chunks(16) {
@@ -99,12 +101,18 @@ impl SymmetricManager for Aes {
     fn decrypt(&self, encrypted_message: &[u8]) -> Result<String, crate::commons::exception::AuthenticationApiException::AuthenticationApiException> {
         let message_decoded = general_purpose::STANDARD.decode(encrypted_message);
         if message_decoded.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), message_decoded.err().unwrap().to_string()));
+            return Err(AuthenticationApiException::new(
+                StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+                ErrorCodes::CLIFB007,
+                message_decoded.err().unwrap().to_string()));
         }
 
         let o_cipher = self.build_cipher();
         if o_cipher.is_err() {
-            return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), o_cipher.err().unwrap().to_string()));
+            return Err(AuthenticationApiException::new(
+                StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+                ErrorCodes::CLIFB007,
+                o_cipher.err().unwrap().to_string()));
         }
 
         let cipher = o_cipher.unwrap();
@@ -146,7 +154,10 @@ impl Aes {
                 return Ok(Box::new(result.unwrap()));
             }
         }
-        return Err(AuthenticationApiException::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), String::from("AES Bytes value must be 128, 192 or 256")));
+        return Err(AuthenticationApiException::new(
+            StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+            ErrorCodes::CLIFB006,
+            String::from("AES Bytes value must be 128, 192 or 256")));
     }
 
     fn encode_buffer<T: ArrayLength<u8>>(&self, buffer: Vec<GenericArray<u8, T>>) -> String {

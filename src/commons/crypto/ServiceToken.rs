@@ -3,7 +3,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use base64::{engine::general_purpose, Engine};
 use reqwest::StatusCode;
 
-use crate::commons::exception::AuthenticationApiException;
+use crate::commons::exception::{AuthenticationApiException, ErrorCodes::ErrorCodes};
 
 use super::Payload;
 
@@ -65,7 +65,10 @@ pub(crate) fn from_string(token: String) -> Result<ServiceToken, AuthenticationA
 }
 
 fn malformed_exception() -> Result<ServiceToken, AuthenticationApiException::AuthenticationApiException> {
-    return Err(AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), String::from("Malformed token.")));
+    return Err(AuthenticationApiException::new(
+        StatusCode::UNAUTHORIZED.as_u16(), 
+        ErrorCodes::CLIUA003,
+        String::from("Malformed token.")));
 }
 
 impl ServiceToken {
@@ -109,7 +112,10 @@ impl ServiceToken {
 
         if timestamp > self.payload.expires {
             let refresh = (timestamp - self.payload.expires) < EXPIRATION_MARGIN;
-            return Err((refresh, AuthenticationApiException::new(StatusCode::UNAUTHORIZED.as_u16(), String::from("Token has expired."))));
+            return Err((refresh, AuthenticationApiException::new(
+                StatusCode::UNAUTHORIZED.as_u16(),
+                ErrorCodes::CLIFB003,
+                String::from("Token has expired."))));
         }
 
         return Ok(());
