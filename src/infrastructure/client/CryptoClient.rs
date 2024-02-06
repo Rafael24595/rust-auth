@@ -6,12 +6,22 @@ use crate::{commons::{configuration::Configuration, exception::{AuthenticationAp
 pub struct CryptoClient {
     request: CryptoRequest::CryptoRequest,
     response: Option<CryptoResponse::CryptoResponse>,
+    encrypted: bool
 }
 
 pub(crate) fn new(request: CryptoRequest::CryptoRequest, response: Option<CryptoResponse::CryptoResponse>) -> CryptoClient {
     return CryptoClient {
         request,
-        response
+        response,
+        encrypted: true
+    };
+}
+
+pub(crate) fn new_unsafe(request: CryptoRequest::CryptoRequest, response: Option<CryptoResponse::CryptoResponse>) -> CryptoClient {
+    return CryptoClient {
+        request,
+        response,
+        encrypted: false
     };
 }
 
@@ -25,7 +35,7 @@ pub(crate) async fn status(service: Service::Service) -> Result<(), Authenticati
     request.set_method(String::from("GET"));
     request.set_path(service.end_point_status());
 
-    let r_response = new(request, None).launch().await;
+    let r_response = new_unsafe(request, None).launch().await;
     if r_response.is_err() {
         return Err(r_response.err().unwrap());
     }
@@ -48,7 +58,7 @@ pub(crate) async fn key(service: Service::Service) -> Result<DtoPubKeyRequest::D
     request.set_method(String::from("GET"));
     request.set_path(service.end_point_key());
 
-    let response = new(request, None).launch().await;
+    let response = new_unsafe(request, None).launch().await;
     if response.is_err() {
         return Err(response.err().unwrap());
     }
@@ -129,9 +139,7 @@ impl CryptoClient {
         };
 
         if method != "GET" {
-            let v_body = request.body();
-            let symmetric = service.symmetric_key()?;
-            let encrypted = symmetric.encrypt_message(&v_body)?;
+            let encrypted = self.input_body_treatment(service, request.body())?;
             petition = petition.body(encrypted);
         }
 
@@ -163,14 +171,29 @@ impl CryptoClient {
         let mut body = Vec::new();
         let b_body = response.text().await;
         if b_body.is_ok() {
-            let symmetric = service.symmetric_key()?;
-            let decrypted = symmetric.decrypt_message(b_body.unwrap().as_bytes())?;
-            body = decrypted.as_bytes().to_vec();
+            body = self.ounput_body_treatment(service, b_body.unwrap())?;
         }
 
         crypto_response.set_body(body);
 
         return Ok(crypto_response);
+    }
+
+    pub fn input_body_treatment(&self, service: Service::Service, body: Vec<u8>) -> Result<String, AuthenticationApiException::AuthenticationApiException> {
+        if !self.encrypted {
+            return Ok(String::from_utf8_lossy(&body).to_string());
+        }
+        let symmetric = service.symmetric_key()?;
+        return symmetric.encrypt_message(&body);
+    }
+
+    pub fn ounput_body_treatment(&self, service: Service::Service, body: String) -> Result<Vec<u8>, AuthenticationApiException::AuthenticationApiException> {
+        if !self.encrypted {
+            return Ok(body.as_bytes().to_vec());
+        }
+        let symmetric = service.symmetric_key()?;
+        let decrypted = symmetric.decrypt_message(body.as_bytes())?;
+        return Ok(decrypted.as_bytes().to_vec());
     }
 
 }
