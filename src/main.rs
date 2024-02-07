@@ -59,6 +59,14 @@ mod commons {
         pub mod AuthenticationAppException;
         pub mod AuthenticationApiException;
     }
+    pub mod log {
+        pub mod DependencyLog;
+        pub mod DependencyFormatter;
+        pub mod Log;
+        pub mod LogConsole;
+        pub mod LogEvent;
+        pub mod LogFormatter;
+    }
 }
 
 mod domain {

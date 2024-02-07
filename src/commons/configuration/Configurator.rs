@@ -4,12 +4,15 @@ use crate::commons::crypto::modules::asymmetric::{AsymmetricKeys, AsymmetricPriv
 use crate::commons::crypto::modules::symmetric::SymmetricKeys;
 use crate::commons::crypto::CryptoConfiguration;
 use crate::commons::exception::AuthenticationAppException;
+use crate::commons::log::Log;
 use crate::domain::{Services, PassToken};
 
 use crate::commons::configuration::Configuration::{self, create_service_token};
 
 pub(crate) fn initialize() -> Result<(), AuthenticationAppException::AuthenticationAppException> {
     dotenv().ok();
+
+    initialize_log();
 
     let result = initialize_configuration();
     if result.is_err() {
@@ -20,6 +23,11 @@ pub(crate) fn initialize() -> Result<(), AuthenticationAppException::Authenticat
     initialize_pass_tokens();
 
     return Ok(());
+}
+
+fn initialize_log() {
+    let logger = std::env::var("LOG_INSTANCE");
+    Log::initialize(logger.unwrap_or_default());
 }
 
 fn initialize_configuration() -> Result<PassToken::PassToken, AuthenticationAppException::AuthenticationAppException> {
@@ -33,14 +41,13 @@ fn initialize_configuration() -> Result<PassToken::PassToken, AuthenticationAppE
         symmetric,
     );
 
-
     let conf = Configuration::new(self_owner.ok(), crypto);
     
     Configuration::initialize(conf.clone());
 
     let token = create_service_token();
 
-    println!("Service token created: {}", token.uuid());
+    Log::log_info(format!("Service token created: {}", token.uuid()));
 
     return Ok(token);
 }
